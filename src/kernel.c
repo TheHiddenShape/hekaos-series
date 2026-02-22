@@ -357,7 +357,7 @@ kernel_main (void)
     kprint_stack_info ();
     klog_gdt_info ();
 
-    pr_info("HekaOS v1.0 initialized\n");
+    pr_info("HekaOS v0.1.0 initialized\n");
 
     terminal_writestring ("Welcome to HekaOS, type help to get started !\n\n");
     shell_print_prompt ();

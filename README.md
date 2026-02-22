@@ -1,8 +1,8 @@
-# HekaOS v1.0
+# HekaOS v0.1.0
 
 A 32-bit x86 monolithic hybrid kernel written from scratch in **C** and **Rust**, where each language brings its strongest suit to the table C for low-level hardware control and bare-metal precision, Rust for memory safety and robust system abstractions.
 
-This is the first version in a series.
+This is the first milestone in a series leading to v1.0.0 (first stable release).
 
 ## Core Features
 
@@ -41,39 +41,39 @@ make run-bin        # Boot the raw binary in QEMU (no GRUB)
 
 ## Roadmap
 
-### v1.0 - Boot Sequence Primitives ✅
+### v0.1.0 - Boot Sequence Primitives ✅
 
 A bootable kernel loaded by GRUB, built on an assembly entry point, with a minimal library providing basic types and utility functions. Writes to VGA for screen output. Configures and loads the GDT and IDT to handle keyboard interrupts.
 
-### v2.0 - Memory
+### v0.2.0 - Memory
 
 A complete memory subsystem with pagination handling. Read/write rights on memory. User space and kernel space separation. Physical and virtual memory management. Kernel helpers for physical memory (`kmalloc`, `kfree`, `ksize`, `kbrk`) and virtual memory (`vmalloc`, `vfree`, `vsize`, `vbrk`). Kernel panic handling.
 
-### v3.0 - Interrupts
+### v0.3.0 - Interrupts
 
 Hardware and software interrupts. A full interrupt descriptor table. Signal handling and scheduling. Global panic fault handling. Register cleaning and stack saving.
 
-### v4.0 - Processes
+### v0.4.0 - Processes
 
 Basic data structures for processes. Process interconnection (kinship, signals, sockets). Process ownership and rights. Helpers for syscalls: `fork`, `wait`, `_exit`, `getuid`, `signal`, `kill`. Process interruptions, memory separation, and multitasking.
 
-### v5.0 - Filesystem
+### v0.5.0 - Filesystem
 
 A complete interface to read/write an IDE. A complete interface to read/write/delete an ext2 filesystem. A basic file tree (`/sys`, `/var`, `/dev`, `/proc`, `/sys`).
 
-### v6.0 - Syscalls, Sockets & Environment
+### v0.6.0 - Syscalls, Sockets & Environment
 
 A complete syscall table and syscall system. A complete Unix environment. User accounts with login and password. Password protection. Inter-process communication sockets. A Unix-like filesystem hierarchy.
 
-### v7.0 - Modules
+### v0.7.0 - Modules
 
 Registering kernel modules (creation/destruction). Loading modules at boot time. Communication and callback interfaces between the kernel and modules.
 
-### v8.0 - ELF
+### v0.8.0 - ELF
 
 A complete interface to read, parse, store, and execute ELF files. Syscalls to read ELF files and launch processes from them. A kernel module in ELF format, ready to be inserted at runtime.
 
-### v9.0 - First Stable Release
+### v1.0.0 - First Stable Release
 
 Fully functional basic binaries (`/bin/*`). A libc implementation. A POSIX-compliant shell.
 
