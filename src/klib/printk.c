@@ -42,18 +42,18 @@ print_int (int value, int base, int is_signed)
     char buffer[32];
     char *ptr = buffer + sizeof (buffer) - 1;
     int negative = 0;
-    unsigned int uvalue;
+    uint32_t uvalue;
 
     *ptr = '\0';
 
     if (is_signed && value < 0)
     {
         negative = 1;
-        uvalue = (unsigned int)(-(value + 1)) + 1;
+        uvalue = (uint32_t)(-(value + 1)) + 1;
     }
     else
     {
-        uvalue = (unsigned int)value;
+        uvalue = (uint32_t)value;
     }
 
     if (uvalue == 0)
@@ -79,7 +79,7 @@ print_int (int value, int base, int is_signed)
 }
 
 static void
-print_hex (unsigned int value)
+print_hex (uint32_t value)
 {
     print_string ("0x");
     if (value == 0)
@@ -136,14 +136,14 @@ printk (const char *format, ...)
             }
             case 'u':
             {
-                unsigned int val = va_arg (args, unsigned int);
+                uint32_t val = va_arg (args, uint32_t);
                 print_int (val, 10, 0);
                 count++;
                 break;
             }
             case 'x':
             {
-                unsigned int val = va_arg (args, unsigned int);
+                uint32_t val = va_arg (args, uint32_t);
                 print_hex (val);
                 count++;
                 break;
@@ -151,7 +151,7 @@ printk (const char *format, ...)
             case 'p':
             {
                 void *ptr = va_arg (args, void *);
-                print_hex ((unsigned int)ptr);
+                print_hex ((uint32_t)ptr);
                 count++;
                 break;
             }

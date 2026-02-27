@@ -7,7 +7,7 @@ uint32_t first_page_table[1024] __attribute__ ((aligned (4096)));
 void
 paging_init (void)
 {
-    unsigned int i;
+    uint32_t i;
 
     for (i = 0; i < 1024; i++)
     {
@@ -18,7 +18,7 @@ paging_init (void)
         first_page_table[i] = (i * 0x1000) | 3;
     }
 
-    page_directory[0] = ((unsigned int)first_page_table) | 3;
+    page_directory[0] = ((uint32_t)first_page_table) | 3;
     load_page_directory ((uint32_t *)page_directory);
     enable_paging ();
     pr_info ("Paging enabled (identity mapped first 4 MiB)\n");
