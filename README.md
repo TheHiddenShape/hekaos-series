@@ -14,12 +14,13 @@ This is the first milestone in a series leading to v1.0.0 (first stable release)
 - **Kernel ring buffer** - internal log buffer for kernel messages
 - **Command-line interface** - interactive shell (`hekashell`) with the following built-in commands:
 
-| Command   | Description                            |
-|-----------|----------------------------------------|
-| `help`    | Show available commands                |
-| `dmesg`   | Display the kernel ring buffer         |
-| `reboot`  | Reboot the system                      |
-| `halt`    | Halt the system                        |
+| Command    | Description                            |
+|------------|----------------------------------------|
+| `help`     | Show available commands                |
+| `dmesg`    | Display the kernel ring buffer         |
+| `reboot`   | Reboot the system                      |
+| `shutdown` | Power off the system (ACPI)            |
+| `halt`     | Halt the CPU                           |
 
 ## Building & Running
 

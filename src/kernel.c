@@ -214,13 +214,30 @@ shell_halt (void)
 }
 
 void
+shell_shutdown (void)
+{
+    terminal_writestring ("Shutting down...\n");
+    // ACPI shutdown: write SLP_EN (bit 13) to PM1a control block
+    // QEMU PIIX4: port 0x604, value 0x2000
+    outw (0x604, 0x2000);
+    // Bochs / older QEMU fallback
+    outw (0xB004, 0x2000);
+    // VirtualBox fallback
+    outw (0x4004, 0x3400);
+    // if all fail, halt
+    terminal_writestring ("ACPI shutdown failed, halting.\n");
+    disable_interrupts_and_halt ();
+}
+
+void
 shell_help (void)
 {
     terminal_writestring ("Available commands:\n");
     terminal_writestring ("  help   - Show this help message\n");
     terminal_writestring ("  dmesg  - Display kernel ring buffer\n");
-    terminal_writestring ("  reboot - Reboot the system\n");
-    terminal_writestring ("  halt   - Halt the system\n");
+    terminal_writestring ("  reboot   - Reboot the system\n");
+    terminal_writestring ("  shutdown - Power off the system (ACPI)\n");
+    terminal_writestring ("  halt     - Halt the CPU\n");
 }
 
 void
@@ -229,6 +246,10 @@ shell_execute (const char *cmd)
     if (strcmp (cmd, "reboot") == 0)
     {
         shell_reboot ();
+    }
+    else if (strcmp (cmd, "shutdown") == 0)
+    {
+        shell_shutdown ();
     }
     else if (strcmp (cmd, "halt") == 0)
     {

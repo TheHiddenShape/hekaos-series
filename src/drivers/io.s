@@ -1,4 +1,5 @@
 .global outb
+.global outw
 .global inb
 .global io_wait
 
@@ -11,6 +12,12 @@ outb:
 inb:
     mov 4(%esp), %dx
     in %dx, %al
+    ret
+
+outw:
+    mov 8(%esp), %ax
+    mov 4(%esp), %dx
+    out %ax, %dx
     ret
 
 io_wait:
