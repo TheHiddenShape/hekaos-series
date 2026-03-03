@@ -13,7 +13,7 @@ https://wiki.osdev.org/Setting_Up_Paging
 #define PAGE_RW         0x02
 #define PAGE_USER       0x04
 
-// Kernel/User space split (3/1)
+// User/Kernel classic space split (3GB/1GB)
 #define KERNEL_VIRT_BASE    0xC0000000
 #define USER_SPACE_TOP      KERNEL_VIRT_BASE
 

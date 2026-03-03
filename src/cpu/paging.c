@@ -25,6 +25,10 @@ paging_init (void)
     } 
 
     page_directory[0] = ((uint32_t)first_page_table) | (PAGE_PRESENT | PAGE_RW);
+    /* recursive mapping: PD[1023] -> PD itself, so the MMU traverses
+       CR3 -> PD[1023] -> PD (as PT) -> PD[1023] -> phys addr of PD
+       this maps the PD at 0xFFFFF000 and all PTs at 0xFFC00000+ */
+    page_directory[1023] = ((uint32_t)page_directory) | (PAGE_PRESENT | PAGE_RW);
     load_page_directory ((uint32_t *)page_directory);
     enable_paging ();
     pr_info ("Paging enabled (identity mapped first 4 MiB)\n");
