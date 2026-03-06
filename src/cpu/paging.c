@@ -67,7 +67,7 @@ void map_page(void *physaddr, void *virtualaddr, unsigned int flags)
     unsigned long ptindex = (unsigned long)virtualaddr >> 12 & 0x03FF;
     unsigned long *pd = (unsigned long *)0xFFFFF000;
 
-    if (!(pd[pdindex] & 0x01))
+    if (!(pd[pdindex] & 0x01)) // check if PAGE_PRESENT
     {
         if (pt_pool_next >= PT_POOL_SIZE)
         {

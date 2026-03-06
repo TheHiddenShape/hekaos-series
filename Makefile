@@ -38,7 +38,7 @@ DRIVERS_OBJS = $(OBJ_DIR)/io.o $(OBJ_DIR)/pic.o
 
 MEMORY_OBJS = $(OBJ_DIR)/phys_page_frame.o
 
-KLIB_OBJS = $(OBJ_DIR)/string.o $(OBJ_DIR)/printk.o
+KLIB_OBJS = $(OBJ_DIR)/string.o $(OBJ_DIR)/printk.o $(OBJ_DIR)/kpanic.o
 
 KERNEL_OBJS = $(OBJ_DIR)/kernel.o
 
