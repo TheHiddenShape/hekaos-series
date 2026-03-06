@@ -4,6 +4,7 @@
 #include "../include/io.h"
 #include "../include/klib.h"
 #include "../include/paging.h"
+#include "../include/phys_page_frame.h"
 #include "../include/pic.h"
 #include "../include/printk.h"
 #include <stdbool.h>
@@ -374,6 +375,7 @@ kernel_main (void)
     pic_remap ();
     idt_init ();
     paging_init ();
+    pmm_init ();
     paging_test ();
 
     print_banner ();

@@ -1,4 +1,5 @@
 #include "../include/paging.h"
+#include "../include/phys_page_frame.h"
 #include "../include/printk.h"
 
 uint32_t page_directory[PD_ENTRIES] __attribute__ ((aligned (PAGE_SIZE)));
@@ -114,6 +115,39 @@ void unmap_page(void *virtualaddr)
 
     pt[ptindex] = 0;
     flush_tlb ((unsigned long)virtualaddr);
+}
+
+void *
+alloc_page (void *virtualaddr, unsigned int flags)
+{
+    void *frame = pmm_alloc_frame ();
+    if (!frame)
+    {
+        return (void *)0;
+    }
+
+    map_page (frame, virtualaddr, flags);
+
+    if (!get_physaddr (virtualaddr))
+    {
+        pmm_free_frame (frame);
+        return (void *)0;
+    }
+
+    return virtualaddr;
+}
+
+void
+free_page (void *virtualaddr)
+{
+    void *phys = get_physaddr (virtualaddr);
+    if (!phys)
+    {
+        return;
+    }
+
+    unmap_page (virtualaddr);
+    pmm_free_frame (phys);
 }
 
 void

@@ -6,6 +6,7 @@ BOOT_DIR = $(SRC_DIR)/boot
 CPU_DIR = $(SRC_DIR)/cpu
 DRIVERS_DIR = $(SRC_DIR)/drivers
 KLIB_DIR = $(SRC_DIR)/klib
+MEMORY_DIR = $(SRC_DIR)/memory
 KERNEL_DIR = kernel
 
 LINKER_SCRIPT = $(SRC_DIR)/linker.ld
@@ -35,18 +36,20 @@ CPU_OBJS = $(OBJ_DIR)/gdt.o $(OBJ_DIR)/gdt_flush.o $(OBJ_DIR)/idt.o $(OBJ_DIR)/i
 
 DRIVERS_OBJS = $(OBJ_DIR)/io.o $(OBJ_DIR)/pic.o
 
+MEMORY_OBJS = $(OBJ_DIR)/phys_page_frame.o
+
 KLIB_OBJS = $(OBJ_DIR)/string.o $(OBJ_DIR)/printk.o
 
 KERNEL_OBJS = $(OBJ_DIR)/kernel.o
 
-OBJS = $(BOOT_OBJS) $(CPU_OBJS) $(DRIVERS_OBJS) $(KLIB_OBJS) $(KERNEL_OBJS)
+OBJS = $(BOOT_OBJS) $(CPU_OBJS) $(MEMORY_OBJS) $(DRIVERS_OBJS) $(KLIB_OBJS) $(KERNEL_OBJS)
 
 -include $(OBJS:.o=.d)
 
 all: $(KERNEL_BIN) $(KERNEL_ISO)
 
 vpath %.s $(BOOT_DIR):$(CPU_DIR):$(DRIVERS_DIR)
-vpath %.c $(SRC_DIR):$(CPU_DIR):$(DRIVERS_DIR):$(KLIB_DIR)
+vpath %.c $(SRC_DIR):$(CPU_DIR):$(MEMORY_DIR):$(DRIVERS_DIR):$(KLIB_DIR)
 
 $(OBJ_DIR)/%.o: %.s | $(OBJ_DIR)
 	$(AS) $(ASFLAGS) $< -o $@

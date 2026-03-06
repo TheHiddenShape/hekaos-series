@@ -38,6 +38,9 @@ void *get_physaddr (void *virtualaddr);
 void map_page (void *physaddr, void *virtualaddr, unsigned int flags);
 void unmap_page (void *virtualaddr);
 
+void *alloc_page (void *virtualaddr, unsigned int flags);
+void  free_page (void *virtualaddr);
+
 void paging_test (void);
 
 #endif
