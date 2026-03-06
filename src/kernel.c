@@ -375,7 +375,7 @@ kernel_main (void)
     pic_remap ();
     idt_init ();
     paging_init ();
-    pmm_init ();
+    phys_mem_init ();
     paging_test ();
 
     print_banner ();

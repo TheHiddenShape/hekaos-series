@@ -120,7 +120,7 @@ void unmap_page(void *virtualaddr)
 void *
 alloc_page (void *virtualaddr, unsigned int flags)
 {
-    void *frame = pmm_alloc_frame ();
+    void *frame = phys_alloc_frame ();
     if (!frame)
     {
         return (void *)0;
@@ -130,7 +130,7 @@ alloc_page (void *virtualaddr, unsigned int flags)
 
     if (!get_physaddr (virtualaddr))
     {
-        pmm_free_frame (frame);
+        phys_free_frame (frame);
         return (void *)0;
     }
 
@@ -147,7 +147,7 @@ free_page (void *virtualaddr)
     }
 
     unmap_page (virtualaddr);
-    pmm_free_frame (phys);
+    phys_free_frame (phys);
 }
 
 void
