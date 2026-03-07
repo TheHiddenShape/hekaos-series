@@ -382,6 +382,8 @@ kernel_main (void)
     idt_init ();
     paging_init ();
     phys_mem_init ();
+    phys_mem_test ();
+    paging_test ();
 
     print_banner ();
 

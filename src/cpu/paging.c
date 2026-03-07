@@ -173,11 +173,11 @@ paging_test (void)
         {
             if (!(cr0 & 0x00000001))
             {
-                pr_err ("CR0: PE bit not set (CR0 = 0x%x)\n", cr0);
+                kpanic ("CR0: PE bit not set");
             }
             if (!(cr0 & 0x80000000))
             {
-                pr_err ("CR0: PG bit not set (CR0 = 0x%x)\n", cr0);
+                kpanic ("CR0: PG bit not set");
             }
         }
     }
@@ -191,8 +191,7 @@ paging_test (void)
         }
         else
         {
-            pr_err ("CR3: expected 0x%x, got 0x%x\n",
-                    (uint32_t)page_directory, cr3);
+            kpanic ("CR3: does not point to page directory");
         }
     }
 
@@ -207,7 +206,7 @@ paging_test (void)
         }
         else
         {
-            pr_err ("Identity map: read back wrong value at 0x100000\n");
+            kpanic ("Identity map: read/write failed at 0x100000");
         }
         *addr = old;
     }
@@ -221,8 +220,7 @@ paging_test (void)
         }
         else
         {
-            pr_err ("Identity map: virt 0x100000 resolved to 0x%x\n",
-                    (uint32_t)phys);
+            kpanic ("Identity map: virt 0x100000 wrong phys resolution");
         }
     }
 
@@ -232,7 +230,7 @@ paging_test (void)
         void *paddr = phys_alloc_frame ();
         if (!paddr)
         {
-            pr_err ("Map round-trip: could not allocate frame\n");
+            kpanic ("Map round-trip: could not allocate frame");
         }
         else
         {
@@ -246,8 +244,7 @@ paging_test (void)
             }
             else
             {
-                pr_err ("Map round-trip: expected phys 0x%x, got 0x%x\n",
-                        (uint32_t)paddr, (uint32_t)resolved);
+                kpanic ("Map round-trip: phys address mismatch");
             }
 
             volatile uint32_t *ptr = (volatile uint32_t *)vaddr;
@@ -258,7 +255,7 @@ paging_test (void)
             }
             else
             {
-                pr_err ("Map round-trip: read/write failed\n");
+                kpanic ("Map round-trip: read/write failed");
             }
 
             unmap_page (vaddr);
@@ -270,8 +267,7 @@ paging_test (void)
             }
             else
             {
-                pr_err ("Unmap: mapping still present at 0x%x\n",
-                        (uint32_t)vaddr);
+                kpanic ("Unmap: mapping still present");
             }
             phys_free_frame (paddr);
         }
@@ -290,7 +286,7 @@ paging_test (void)
         }
         else
         {
-            pr_err ("Map: unaligned virtual address was accepted\n");
+            kpanic ("Map: unaligned virtual address was accepted");
         }
     }
 
@@ -306,8 +302,7 @@ paging_test (void)
         }
         else
         {
-            pr_err ("alloc_page: expected 0x%x, got 0x%x\n",
-                    (uint32_t)vaddr, (uint32_t)result);
+            kpanic ("alloc_page: wrong vaddr returned");
         }
 
         uint32_t free_during = phys_free_count ();
@@ -318,8 +313,7 @@ paging_test (void)
         }
         else
         {
-            pr_err ("alloc_page: free count %d -> %d (expected %d)\n",
-                    free_before, free_during, free_before - 1);
+            kpanic ("alloc_page: free count inconsistent");
         }
 
         volatile uint32_t *ptr = (volatile uint32_t *)vaddr;
@@ -330,8 +324,7 @@ paging_test (void)
         }
         else
         {
-            pr_err ("alloc_page: read/write failed at 0x%x\n",
-                    (uint32_t)vaddr);
+            kpanic ("alloc_page: read/write failed");
         }
 
         free_page (vaddr);
@@ -344,8 +337,7 @@ paging_test (void)
         }
         else
         {
-            pr_err ("free_page: free count %d, expected %d\n",
-                    free_after, free_before);
+            kpanic ("free_page: frame not returned to PMM");
         }
 
         void *phys_after = get_physaddr (vaddr);
@@ -356,8 +348,7 @@ paging_test (void)
         }
         else
         {
-            pr_err ("free_page: mapping still present at 0x%x\n",
-                    (uint32_t)vaddr);
+            kpanic ("free_page: mapping still present");
         }
     }
 
@@ -377,7 +368,7 @@ paging_test (void)
         }
         else
         {
-            pr_err ("Multi-alloc: allocation failed\n");
+            kpanic ("Multi-alloc: allocation failed");
         }
 
         void *p1 = get_physaddr (v1);
@@ -390,7 +381,7 @@ paging_test (void)
         }
         else
         {
-            pr_err ("Multi-alloc: duplicate physical frames\n");
+            kpanic ("Multi-alloc: duplicate physical frames");
         }
 
         *(volatile uint32_t *)v1 = 0xAAAAAAAA;
@@ -405,7 +396,7 @@ paging_test (void)
         }
         else
         {
-            pr_err ("Multi-alloc: cross-talk detected between pages\n");
+            kpanic ("Multi-alloc: cross-talk detected between pages");
         }
 
         free_page (v3);
@@ -425,7 +416,7 @@ paging_test (void)
         }
         else
         {
-            pr_err ("free_page: unmapped address changed free count\n");
+            kpanic ("free_page: unmapped address changed free count");
         }
     }
 

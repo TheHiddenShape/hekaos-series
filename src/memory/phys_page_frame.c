@@ -129,8 +129,7 @@ phys_mem_test (void)
         }
         else
         {
-            pr_err ("PMM init: free count = %d, expected %d\n",
-                    free, PHYS_REGION_FRAMES);
+            kpanic ("PMM init: free count mismatch");
         }
     }
 
@@ -147,7 +146,7 @@ phys_mem_test (void)
         }
         else
         {
-            pr_err ("PMM alloc: invalid address 0x%x\n", (uint32_t)frame);
+            kpanic ("PMM alloc: invalid frame address");
         }
         phys_free_frame (frame);
     }
@@ -167,8 +166,7 @@ phys_mem_test (void)
         }
         else
         {
-            pr_err ("PMM alloc/free: count %d -> %d -> %d (expected %d -> %d -> %d)\n",
-                    before, during, after, before, before - 1, before);
+            kpanic ("PMM alloc/free: free count inconsistent");
         }
     }
 
@@ -185,7 +183,7 @@ phys_mem_test (void)
         }
         else
         {
-            pr_err ("PMM alloc unique: duplicate frames detected\n");
+            kpanic ("PMM alloc unique: duplicate frames detected");
         }
         phys_free_frame (c);
         phys_free_frame (b);
@@ -204,7 +202,7 @@ phys_mem_test (void)
         }
         else
         {
-            pr_err ("PMM free: unaligned address was accepted\n");
+            kpanic ("PMM free: unaligned address was accepted");
         }
     }
 
@@ -220,7 +218,7 @@ phys_mem_test (void)
         }
         else
         {
-            pr_err ("PMM free: reserved region address was accepted\n");
+            kpanic ("PMM free: reserved region address was accepted");
         }
     }
 
@@ -236,7 +234,7 @@ phys_mem_test (void)
         }
         else
         {
-            pr_err ("PMM free: out-of-range address was accepted\n");
+            kpanic ("PMM free: out-of-range address was accepted");
         }
     }
 
@@ -252,7 +250,7 @@ phys_mem_test (void)
         }
         else
         {
-            pr_err ("PMM free: null address was accepted\n");
+            kpanic ("PMM free: null address was accepted");
         }
     }
 
@@ -277,8 +275,7 @@ phys_mem_test (void)
         }
         else
         {
-            pr_err ("PMM exhaust: allocated %d frames, expected %d\n",
-                    allocated, total);
+            kpanic ("PMM exhaust: frame count mismatch");
         }
 
         if (phys_alloc_frame () == (void *)0)
@@ -287,7 +284,7 @@ phys_mem_test (void)
         }
         else
         {
-            pr_err ("PMM OOM: did not return null\n");
+            kpanic ("PMM OOM: did not return null");
         }
 
         if (phys_free_count () == 0)
@@ -296,8 +293,7 @@ phys_mem_test (void)
         }
         else
         {
-            pr_err ("PMM exhaust: free count is %d, expected 0\n",
-                    phys_free_count ());
+            kpanic ("PMM exhaust: free count is not 0");
         }
 
         // reinit to restore state for following tests
@@ -310,8 +306,7 @@ phys_mem_test (void)
         }
         else
         {
-            pr_err ("PMM reinit: free count = %d, expected %d\n",
-                    phys_free_count (), PHYS_REGION_FRAMES);
+            kpanic ("PMM reinit: state not restored");
         }
     }
 
