@@ -36,13 +36,13 @@ void enable_paging (void);
 uint32_t read_cr0 (void);
 uint32_t read_cr2 (void);
 uint32_t read_cr3 (void);
-void flush_tlb (unsigned long addr);
+void flush_tlb (uint32_t addr);
 
 void *get_physaddr (void *virtualaddr);
-void map_page (void *physaddr, void *virtualaddr, unsigned int flags);
+void map_page (void *physaddr, void *virtualaddr, uint32_t flags);
 void unmap_page (void *virtualaddr);
 
-void *alloc_page (void *virtualaddr, unsigned int flags);
+void *alloc_page (void *virtualaddr, uint32_t flags);
 void  free_page (void *virtualaddr);
 
 void paging_test (void);

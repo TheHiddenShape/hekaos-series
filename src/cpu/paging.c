@@ -8,10 +8,10 @@ uint32_t first_page_table[PT_ENTRIES] __attribute__ ((aligned (PAGE_SIZE)));
 static uint32_t pt_pool[PT_POOL_SIZE][PT_POOL_ENTRIES] __attribute__ ((aligned (PAGE_SIZE)));
 static uint32_t pt_pool_next = 0;
 
-static inline unsigned long *
-get_pt (unsigned long pdindex)
+static inline uint32_t *
+get_pt (uint32_t pdindex)
 {
-    return ((unsigned long *)RECURSIVE_PT_BASE) + (PT_ENTRIES * pdindex);
+    return ((uint32_t *)RECURSIVE_PT_BASE) + (PT_ENTRIES * pdindex);
 }
 
 void
@@ -44,34 +44,34 @@ paging_init (void)
 
 void *get_physaddr(void *virtualaddr)
 {
-    unsigned long pdindex = (unsigned long)virtualaddr >> 22;
-    unsigned long ptindex = (unsigned long)virtualaddr >> 12 & 0x03FF;
+    uint32_t pdindex = (uint32_t)virtualaddr >> 22;
+    uint32_t ptindex = (uint32_t)virtualaddr >> 12 & 0x03FF;
 
-    unsigned long *pd = (unsigned long *)RECURSIVE_PD_BASE;
+    uint32_t *pd = (uint32_t *)RECURSIVE_PD_BASE;
     if (!(pd[pdindex] & 0x01))
     {
         return (void *)0;
     }
 
-    unsigned long *pt = get_pt (pdindex);
+    uint32_t *pt = get_pt (pdindex);
     if (!(pt[ptindex] & 0x01))
     {
         return (void *)0;
     }
 
-    return (void *)((pt[ptindex] & ~0xFFF) + ((unsigned long)virtualaddr & 0xFFF));
+    return (void *)((pt[ptindex] & ~0xFFF) + ((uint32_t)virtualaddr & 0xFFF));
 }
 
-void map_page(void *physaddr, void *virtualaddr, unsigned int flags)
+void map_page(void *physaddr, void *virtualaddr, uint32_t flags)
 {
-    if (((unsigned long)physaddr & 0xFFF) || ((unsigned long)virtualaddr & 0xFFF))
+    if (((uint32_t)physaddr & 0xFFF) || ((uint32_t)virtualaddr & 0xFFF))
     {
         return;
     }
 
-    unsigned long pdindex = (unsigned long)virtualaddr >> 22;
-    unsigned long ptindex = (unsigned long)virtualaddr >> 12 & 0x03FF;
-    unsigned long *pd = (unsigned long *)RECURSIVE_PD_BASE;
+    uint32_t pdindex = (uint32_t)virtualaddr >> 22;
+    uint32_t ptindex = (uint32_t)virtualaddr >> 12 & 0x03FF;
+    uint32_t *pd = (uint32_t *)RECURSIVE_PD_BASE;
 
     if (!(pd[pdindex] & 0x01)) // check if PAGE_PRESENT
     {
@@ -84,47 +84,47 @@ void map_page(void *physaddr, void *virtualaddr, unsigned int flags)
         {
             new_pt[i] = 0;
         }
-        pd[pdindex] = ((unsigned long)new_pt) | (PAGE_PRESENT | PAGE_RW);
+        pd[pdindex] = ((uint32_t)new_pt) | (PAGE_PRESENT | PAGE_RW);
     }
 
-    unsigned long *pt = get_pt (pdindex);
+    uint32_t *pt = get_pt (pdindex);
     if (pt[ptindex] & 0x01)
     {
         pt[ptindex] = 0;
     }
 
-    pt[ptindex] = ((unsigned long)physaddr) | (flags & 0xFFF) | 0x01;
-    flush_tlb ((unsigned long)virtualaddr);
+    pt[ptindex] = ((uint32_t)physaddr) | (flags & 0xFFF) | 0x01;
+    flush_tlb ((uint32_t)virtualaddr);
 }
 
 void unmap_page(void *virtualaddr)
 {
-    if ((unsigned long)virtualaddr & 0xFFF)
+    if ((uint32_t)virtualaddr & 0xFFF)
     {
         return;
     }
 
-    unsigned long pdindex = (unsigned long)virtualaddr >> 22;
-    unsigned long ptindex = (unsigned long)virtualaddr >> 12 & 0x03FF;
+    uint32_t pdindex = (uint32_t)virtualaddr >> 22;
+    uint32_t ptindex = (uint32_t)virtualaddr >> 12 & 0x03FF;
 
-    unsigned long *pd = (unsigned long *)RECURSIVE_PD_BASE;
+    uint32_t *pd = (uint32_t *)RECURSIVE_PD_BASE;
     if (!(pd[pdindex] & 0x01))
     {
         return;
     }
 
-    unsigned long *pt = get_pt (pdindex);
+    uint32_t *pt = get_pt (pdindex);
     if (!(pt[ptindex] & 0x01))
     {
         return;
     }
 
     pt[ptindex] = 0;
-    flush_tlb ((unsigned long)virtualaddr);
+    flush_tlb ((uint32_t)virtualaddr);
 }
 
 void *
-alloc_page (void *virtualaddr, unsigned int flags)
+alloc_page (void *virtualaddr, uint32_t flags)
 {
     void *frame = phys_alloc_frame ();
     if (!frame)
