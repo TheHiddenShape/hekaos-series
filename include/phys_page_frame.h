@@ -5,8 +5,8 @@
 
 // bitmap-based frame allocator. https://wiki.osdev.org/Page_Frame_Allocation
 
-// Total physical memory managed (16 MiB)
-#define PHYS_MEM_SIZE     0x01000000
+// Total physical memory managed (64 MiB)
+#define PHYS_MEM_SIZE     0x04000000
 
 // Physical memory managed starts after identity-mapped region (4 MiB)
 #define PHYS_REGION_START    0x00400000
