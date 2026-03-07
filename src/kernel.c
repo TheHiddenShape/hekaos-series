@@ -239,6 +239,7 @@ shell_help (void)
     terminal_writestring ("  reboot   - Reboot the system\n");
     terminal_writestring ("  shutdown - Power off the system (ACPI)\n");
     terminal_writestring ("  halt     - Halt the CPU\n");
+    terminal_writestring ("  mmtest   - Run memory management tests\n");
 }
 
 void
@@ -263,6 +264,11 @@ shell_execute (const char *cmd)
     else if (strcmp (cmd, "dmesg") == 0)
     {
         dmesg ();
+    }
+    else if (strcmp (cmd, "mmtest") == 0)
+    {
+        phys_mem_test ();
+        paging_test ();
     }
     else if (cmd[0] != '\0')
     {
@@ -376,7 +382,6 @@ kernel_main (void)
     idt_init ();
     paging_init ();
     phys_mem_init ();
-    paging_test ();
 
     print_banner ();
 
