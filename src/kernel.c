@@ -56,11 +56,140 @@ vga_entry (uint8_t uc, uint8_t color)
 
 static const size_t VGA_X = 80;
 static const size_t VGA_Y = 25;
+static const size_t USABLE_ROWS = 24; // last row reserved for status bar
 
 size_t terminal_row;
 size_t terminal_column;
 uint8_t terminal_color;
+uint8_t statusbar_color;
 volatile uint16_t *terminal_buffer;
+
+// statusbar_putstr – write a string directly into the status bar row
+static void
+statusbar_putstr (const char *s, size_t col)
+{
+    while (*s && col < VGA_X)
+    {
+        terminal_buffer[(VGA_Y - 1) * VGA_X + col]
+            = vga_entry (*s, statusbar_color);
+        s++;
+        col++;
+    }
+}
+
+// statusbar_putdec – write a decimal number into the status bar, return next
+// col
+static size_t
+statusbar_putdec (uint32_t val, size_t col)
+{
+    char buf[12];
+    int i = 0;
+
+    if (val == 0)
+    {
+        buf[i++] = '0';
+    }
+    else
+    {
+        while (val > 0)
+        {
+            buf[i++] = '0' + (val % 10);
+            val /= 10;
+        }
+    }
+    // reverse and write
+    while (i > 0 && col < VGA_X)
+    {
+        terminal_buffer[(VGA_Y - 1) * VGA_X + col]
+            = vga_entry (buf[--i], statusbar_color);
+        col++;
+    }
+    return col;
+}
+
+// statusbar_draw – fill the bottom row with status info
+static void
+statusbar_draw (void)
+{
+    // fill entire row with spaces
+    for (size_t x = 0; x < VGA_X; x++)
+    {
+        terminal_buffer[(VGA_Y - 1) * VGA_X + x]
+            = vga_entry (' ', statusbar_color);
+    }
+
+    // left side: mode info (1 space padding)
+    statusbar_putstr (" VGA text mode 80x25", 0);
+
+    // right side: build "col:X row:Y " into a temp buffer, then write
+    // right-aligned
+    char right[32];
+    int ri = 0;
+    // "col:"
+    right[ri++] = 'c';
+    right[ri++] = 'o';
+    right[ri++] = 'l';
+    right[ri++] = ':';
+    // column number
+    {
+        char tmp[6];
+        int ti = 0;
+        uint32_t v = (uint32_t)terminal_column;
+        if (v == 0)
+        {
+            tmp[ti++] = '0';
+        }
+        else
+        {
+            while (v > 0)
+            {
+                tmp[ti++] = '0' + (v % 10);
+                v /= 10;
+            }
+        }
+        while (ti > 0)
+        {
+            right[ri++] = tmp[--ti];
+        }
+    }
+    right[ri++] = ' ';
+    // "row:"
+    right[ri++] = 'r';
+    right[ri++] = 'o';
+    right[ri++] = 'w';
+    right[ri++] = ':';
+    // row number
+    {
+        char tmp[6];
+        int ti = 0;
+        uint32_t v = (uint32_t)terminal_row;
+        if (v == 0)
+        {
+            tmp[ti++] = '0';
+        }
+        else
+        {
+            while (v > 0)
+            {
+                tmp[ti++] = '0' + (v % 10);
+                v /= 10;
+            }
+        }
+        while (ti > 0)
+        {
+            right[ri++] = tmp[--ti];
+        }
+    }
+    right[ri++] = ' ';
+
+    // write right-aligned (1 space padding from edge)
+    size_t start = VGA_X - (size_t)ri;
+    for (int j = 0; j < ri; j++)
+    {
+        terminal_buffer[(VGA_Y - 1) * VGA_X + start + (size_t)j]
+            = vga_entry (right[j], statusbar_color);
+    }
+}
 
 void
 terminal_initialize (void)
@@ -69,14 +198,27 @@ terminal_initialize (void)
     terminal_column = 0;
     terminal_color = vga_entry_color (VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     terminal_buffer = (uint16_t *)0xB8000;
-    for (size_t y = 0; y < VGA_Y; y++)
+
+    // pick status bar theme based on CPU cycle counter parity
+    if (rdtsc () & 1)
+    {
+        statusbar_color = vga_entry_color (VGA_COLOR_WHITE, VGA_COLOR_RED);
+    }
+    else
+    {
+        statusbar_color = vga_entry_color (VGA_COLOR_RED, VGA_COLOR_WHITE);
+    }
+
+    // clear usable area
+    for (size_t y = 0; y < USABLE_ROWS; y++)
     {
         for (size_t x = 0; x < VGA_X; x++)
         {
-            const size_t index = y * VGA_X + x;
-            terminal_buffer[index] = vga_entry (' ', terminal_color);
+            terminal_buffer[y * VGA_X + x] = vga_entry (' ', terminal_color);
         }
     }
+
+    statusbar_draw ();
 }
 
 void
@@ -105,7 +247,7 @@ terminal_putentryat (char c, uint8_t color, size_t x, size_t y)
 void
 terminal_scroll (void)
 {
-    for (size_t y = 0; y < VGA_Y - 1; y++)
+    for (size_t y = 0; y < USABLE_ROWS - 1; y++)
     {
         for (size_t x = 0; x < VGA_X; x++)
         {
@@ -115,7 +257,7 @@ terminal_scroll (void)
     }
     for (size_t x = 0; x < VGA_X; x++)
     {
-        terminal_buffer[(VGA_Y - 1) * VGA_X + x]
+        terminal_buffer[(USABLE_ROWS - 1) * VGA_X + x]
             = vga_entry (' ', terminal_color);
     }
 }
@@ -126,18 +268,20 @@ terminal_putchar (char c)
     if (c == '\n')
     {
         terminal_column = 0;
-        if (++terminal_row == VGA_Y)
+        if (++terminal_row == USABLE_ROWS)
         {
             terminal_scroll ();
-            terminal_row = VGA_Y - 1;
+            terminal_row = USABLE_ROWS - 1;
         }
         terminal_update_cursor ();
+        statusbar_draw ();
         return;
     }
     if (c == '\r')
     {
         terminal_column = 0;
         terminal_update_cursor ();
+        statusbar_draw ();
         return;
     }
     if (c == '\b')
@@ -148,6 +292,7 @@ terminal_putchar (char c)
             terminal_putentryat (' ', terminal_color, terminal_column,
                                  terminal_row);
             terminal_update_cursor ();
+            statusbar_draw ();
         }
         return;
     }
@@ -155,13 +300,14 @@ terminal_putchar (char c)
     if (++terminal_column == VGA_X)
     {
         terminal_column = 0;
-        if (++terminal_row == VGA_Y)
+        if (++terminal_row == USABLE_ROWS)
         {
             terminal_scroll ();
-            terminal_row = VGA_Y - 1;
+            terminal_row = USABLE_ROWS - 1;
         }
     }
     terminal_update_cursor ();
+    statusbar_draw ();
 }
 
 void
