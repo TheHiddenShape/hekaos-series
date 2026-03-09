@@ -4,6 +4,7 @@
 #include "io.h"
 #include "klib.h"
 #include "kmalloc.h"
+#include "vmalloc.h"
 #include "paging.h"
 #include "phys_page_frame.h"
 #include "pic.h"
@@ -381,6 +382,8 @@ kernel_main (void)
     paging_test ();
     heap_init ();
     kmalloc_test ();
+    vmalloc_init ();
+    vmalloc_test ();
 
     print_banner ();
 

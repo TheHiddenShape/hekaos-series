@@ -36,7 +36,7 @@ CPU_OBJS = $(OBJ_DIR)/gdt.o $(OBJ_DIR)/gdt_flush.o $(OBJ_DIR)/idt.o $(OBJ_DIR)/i
 
 DRIVERS_OBJS = $(OBJ_DIR)/io.o $(OBJ_DIR)/pic.o
 
-MEMORY_OBJS = $(OBJ_DIR)/phys_page_frame.o $(OBJ_DIR)/kmalloc.o
+MEMORY_OBJS = $(OBJ_DIR)/phys_page_frame.o $(OBJ_DIR)/kmalloc.o $(OBJ_DIR)/vmalloc.o
 
 KLIB_OBJS = $(OBJ_DIR)/string.o $(OBJ_DIR)/printk.o $(OBJ_DIR)/kpanic.o
 

@@ -5,8 +5,9 @@
 #include <stdint.h>
 
 /* Kernel heap lives in the top 1 GiB, below the recursive-PT window */
+// kmalloc zone: 0xC0000000 – 0xEFFFFFFF (vmalloc lives above at 0xF0000000)
 #define KHEAP_VIRT_BASE 0xC0000000
-#define KHEAP_VIRT_MAX 0xFFBFFFFF
+#define KHEAP_VIRT_MAX 0xEFFFFFFF
 
 void heap_init (void);
 void *kmalloc (size_t size);

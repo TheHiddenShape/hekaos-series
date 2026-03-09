@@ -113,9 +113,11 @@ kbrk (uint32_t nbytes)
     return heap_end;
 }
 
-/* kmalloc – first-fit allocator. Alignment: all returned pointers are 8-byte
- * aligned (ALIGN8 on size, and KHEAP_VIRT_BASE is page-aligned so headers are
- * naturally 8-aligned).*/
+// kmalloc – use for small, sub-page kernel objects (structs, buffers < 1 page).
+// For large or page-granularity allocations use vmalloc to avoid heap fragmentation.
+/* first-fit allocator. Alignment: all returned pointers are 8-byte aligned
+ * (ALIGN8 on size, and KHEAP_VIRT_BASE is page-aligned so headers are
+ * naturally 8-aligned). */
 void *
 kmalloc (size_t size)
 {
