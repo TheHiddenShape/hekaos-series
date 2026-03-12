@@ -332,5 +332,25 @@ kmalloc_test (void)
                  (uint32_t)end_before, (uint32_t)end_after);
     }
 
+    // 8. Alignment: all returned pointers are 8-byte aligned
+    {
+        void *p1 = kmalloc (1);
+        void *p2 = kmalloc (3);
+        void *p3 = kmalloc (13);
+        if (!p1 || !p2 || !p3)
+        {
+            kpanic ("kmalloc test: alignment alloc returned NULL");
+        }
+        if ((uint32_t)p1 % 8 || (uint32_t)p2 % 8 || (uint32_t)p3 % 8)
+        {
+            kpanic ("kmalloc test: pointer not 8-byte aligned");
+        }
+        pr_info ("kmalloc: alignment ok p1=0x%x p2=0x%x p3=0x%x\n",
+                 (uint32_t)p1, (uint32_t)p2, (uint32_t)p3);
+        kfree (p1);
+        kfree (p2);
+        kfree (p3);
+    }
+
     pr_info ("kmalloc test passed\n\n");
 }

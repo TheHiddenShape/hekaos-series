@@ -202,5 +202,64 @@ vmalloc_test (void)
     vfree (NULL, 0);
     pr_info ("vmalloc: vfree(NULL) is no-op\n");
 
+    // 6. Reuse after vfree: freed page is recycled
+    {
+        void *p1 = vmalloc (1);
+        if (!p1)
+        {
+            kpanic ("vmalloc test: reuse alloc returned NULL");
+        }
+        uint32_t addr1 = (uint32_t)p1;
+        vfree (p1, 1);
+        void *p2 = vmalloc (1);
+        if (!p2)
+        {
+            kpanic ("vmalloc test: reuse re-alloc returned NULL");
+        }
+        if ((uint32_t)p2 != addr1)
+        {
+            kpanic ("vmalloc test: freed page not reused");
+        }
+        pr_info ("vmalloc: reuse ok p2=0x%x == old p1\n", (uint32_t)p2);
+        vfree (p2, 1);
+    }
+
+    // 7. Bitmap fragmentation: free middle slot, reuse it, large alloc goes after
+    {
+        void *a = vmalloc (1);
+        void *b = vmalloc (1);
+        void *c = vmalloc (1);
+        if (!a || !b || !c)
+        {
+            kpanic ("vmalloc test: frag alloc returned NULL");
+        }
+        vfree (b, 1); // create a 1-page hole between a and c
+        void *d = vmalloc (1);
+        if (!d)
+        {
+            kpanic ("vmalloc test: frag reuse returned NULL");
+        }
+        if (d != b)
+        {
+            kpanic ("vmalloc test: first-fit did not reuse hole");
+        }
+        // 2-page alloc must skip the filled hole and go after c
+        void *e = vmalloc (2);
+        if (!e)
+        {
+            kpanic ("vmalloc test: frag 2-page alloc returned NULL");
+        }
+        if ((uint32_t)e <= (uint32_t)c)
+        {
+            kpanic ("vmalloc test: 2-page alloc overlaps with c");
+        }
+        pr_info ("vmalloc: frag ok d=0x%x(==b) e=0x%x(>c=0x%x)\n",
+                 (uint32_t)d, (uint32_t)e, (uint32_t)c);
+        vfree (a, 1);
+        vfree (d, 1);
+        vfree (c, 1);
+        vfree (e, 2);
+    }
+
     pr_info ("vmalloc test passed\n\n");
 }
