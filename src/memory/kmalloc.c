@@ -1,3 +1,4 @@
+#include "klib.h"
 #include "kmalloc.h"
 #include "kpanic.h"
 #include "paging.h"
@@ -353,4 +354,28 @@ kmalloc_test (void)
     }
 
     pr_info ("kmalloc test passed\n\n");
+}
+
+void
+kmalloc_query (kmalloc_stats_t *s)
+{
+    memset (s, 0, sizeof (*s));
+    s->heap_end = (uint32_t)heap_end;
+
+    kblock_t *blk = heap_head;
+    while (blk)
+    {
+        s->total_blocks++;
+        if (blk->used)
+        {
+            s->used_blocks++;
+            s->used_bytes += blk->size;
+        }
+        else
+        {
+            s->free_blocks++;
+            s->free_bytes += blk->size;
+        }
+        blk = blk->next;
+    }
 }

@@ -13,6 +13,13 @@ void vfree (void *ptr, uint32_t npages);
 void *vbrk (void);
 uint32_t vsize (void);
 
+typedef struct
+{
+    uint32_t used_pages;
+    uint32_t total_pages;
+} vmalloc_stats_t;
+
 void vmalloc_test (void);
+void vmalloc_query (vmalloc_stats_t *stats);
 
 #endif

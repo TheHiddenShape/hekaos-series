@@ -378,12 +378,90 @@ shell_shutdown (void)
     disable_interrupts_and_halt ();
 }
 
+static void
+terminal_write_uint (uint32_t value)
+{
+    char buf[11];
+    char *p = buf + sizeof (buf) - 1;
+    *p = '\0';
+    if (!value)
+    {
+        *--p = '0';
+    }
+    else
+    {
+        while (value)
+        {
+            *--p = '0' + (value % 10);
+            value /= 10;
+        }
+    }
+    terminal_writestring (p);
+}
+
+static void
+terminal_write_hex (uint32_t value)
+{
+    terminal_writestring ("0x");
+    if (!value)
+    {
+        terminal_putchar ('0');
+        return;
+    }
+    char buf[9];
+    char *p = buf + sizeof (buf) - 1;
+    *p = '\0';
+    while (value)
+    {
+        *--p = "0123456789abcdef"[value % 16];
+        value /= 16;
+    }
+    terminal_writestring (p);
+}
+
+static void
+shell_memdump (void)
+{
+    terminal_writestring ("=== memory dump ===\n");
+
+    kmalloc_stats_t ks;
+    kmalloc_query (&ks);
+    terminal_writestring ("kmalloc: heap=");
+    terminal_write_hex (KHEAP_VIRT_BASE);
+    terminal_writestring ("-");
+    terminal_write_hex (ks.heap_end);
+    terminal_writestring (" | ");
+    terminal_write_uint (ks.total_blocks);
+    terminal_writestring (" blocks (");
+    terminal_write_uint (ks.used_blocks);
+    terminal_writestring (" used, ");
+    terminal_write_uint (ks.free_blocks);
+    terminal_writestring (" free) | ");
+    terminal_write_uint (ks.used_bytes);
+    terminal_writestring ("B used / ");
+    terminal_write_uint (ks.free_bytes);
+    terminal_writestring ("B free\n");
+
+    vmalloc_stats_t vs;
+    vmalloc_query (&vs);
+    terminal_writestring ("vmalloc: zone=");
+    terminal_write_hex (VMALLOC_BASE);
+    terminal_writestring ("-");
+    terminal_write_hex (VMALLOC_MAX);
+    terminal_writestring (" | ");
+    terminal_write_uint (vs.used_pages);
+    terminal_writestring ("/");
+    terminal_write_uint (vs.total_pages);
+    terminal_writestring (" pages used\n");
+}
+
 void
 shell_help (void)
 {
     terminal_writestring ("Available commands:\n");
-    terminal_writestring ("  help   - Show this help message\n");
-    terminal_writestring ("  dmesg  - Display kernel ring buffer\n");
+    terminal_writestring ("  help     - Show this help message\n");
+    terminal_writestring ("  dmesg    - Display kernel ring buffer\n");
+    terminal_writestring ("  memdump  - Display memory usage summary\n");
     terminal_writestring ("  reboot   - Reboot the system\n");
     terminal_writestring ("  shutdown - Power off the system (ACPI)\n");
     terminal_writestring ("  halt     - Halt the CPU\n");
@@ -411,6 +489,10 @@ shell_execute (const char *cmd)
     else if (strcmp (cmd, "dmesg") == 0)
     {
         dmesg ();
+    }
+    else if (strcmp (cmd, "memdump") == 0)
+    {
+        shell_memdump ();
     }
     else if (cmd[0] != '\0')
     {

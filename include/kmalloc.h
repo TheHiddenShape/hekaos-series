@@ -15,6 +15,17 @@ void kfree (void *ptr);
 void *kbrk (uint32_t nbytes); /* nbytes=0 → query current end, else extend */
 size_t ksize (void *ptr);
 
+typedef struct
+{
+    uint32_t heap_end;
+    uint32_t total_blocks;
+    uint32_t used_blocks;
+    uint32_t free_blocks;
+    uint32_t used_bytes;
+    uint32_t free_bytes;
+} kmalloc_stats_t;
+
 void kmalloc_test (void);
+void kmalloc_query (kmalloc_stats_t *stats);
 
 #endif

@@ -1,3 +1,4 @@
+#include "klib.h"
 #include "vmalloc.h"
 #include "kpanic.h"
 #include "paging.h"
@@ -262,4 +263,19 @@ vmalloc_test (void)
     }
 
     pr_info ("vmalloc test passed\n\n");
+}
+
+void
+vmalloc_query (vmalloc_stats_t *s)
+{
+    memset (s, 0, sizeof (*s));
+    s->total_pages = VMALLOC_PAGES;
+
+    for (uint32_t i = 0; i < VMALLOC_PAGES; i++)
+    {
+        if (bitmap_test (i))
+        {
+            s->used_pages++;
+        }
+    }
 }
