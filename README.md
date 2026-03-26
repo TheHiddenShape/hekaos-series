@@ -1,8 +1,8 @@
 # HekaOS v0.1.0
 
-A 32-bit x86 monolithic hybrid kernel written from scratch in **C** and **Rust**, where each language brings its strongest suit to the table C for low-level hardware control and bare-metal precision, Rust for memory safety and robust system abstractions.
+An x86 monolithic hybrid kernel written from scratch in **C** and **Rust**.
 
-This is the first milestone in a series leading to v1.0.0 (first stable release).
+This is the first milestone in a series leading to v1.0.0, the first stable release of a fully functional OS. Design decisions and architectural choices are documented on my personal [blog](https://ammons-organization-1.gitbook.io/thehiddenshape/system-and-networks/kfs-kernel-from-scratch-series).
 
 ## Core Features
 
