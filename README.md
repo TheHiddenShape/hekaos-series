@@ -62,39 +62,41 @@ make run-bin        # Boot the raw binary in QEMU (no GRUB)
 
 ### v0.1.0 - Boot Sequence Primitives ✅
 
-A bootable kernel loaded by GRUB, built on an assembly entry point, with a minimal library providing basic types and utility functions. Writes to VGA for screen output. Configures and loads the GDT and IDT to handle keyboard interrupts.
+a bootable kernel loaded by GRUB, built on an assembly entry point, with a minimal library providing basic types and utility functions. Writes to VGA for screen output. Configures and loads the GDT and IDT to handle keyboard interrupts.
 
 ### v0.2.0 - Memory ✅
 
-A complete memory management system with pagination handling. R/W rights on memory. User space and kernel space separation. Physical and virtual memory management. Kernel heap allocator (kmalloc, kfree, ksize, kbrk): returns virtual addresses backed by physically contiguous pages, operating on top of the paging layer. Virtual memory allocator (vmalloc, vfree, vsize, vbrk): provides large, virtually contiguous allocations mapped across physically fragmented pages through page tables, suitable for large buffers where physical contiguity unavailable. Kernel panic handling.
+the memory subsystem covers the following: pagination, read/write permissions, user/kernel space separation, physical/virtual memory management, and heap allocator helpers (kmalloc, kfree, ksize, kbrk for physical, vmalloc, vfree, vsize, vbrk for virtual), alongside kernel panic handling.
 
 ### v0.3.0 - Interrupts
 
-Hardware and software interrupts. A full interrupt descriptor table. Signal handling and scheduling. Global panic fault handling. Register cleaning and stack saving.
+hardware interrupts, software interrupts, an interrupts descriptor table, signal handling and scheduling, global panic fault handling, Registers cleaning, Stack saving
 
 ### v0.4.0 - Processes
 
-Basic data structures for processes. Process interconnection (kinship, signals, sockets). Process ownership and rights. Helpers for syscalls: `fork`, `wait`, `_exit`, `getuid`, `signal`, `kill`. Process interruptions, memory separation, and multitasking.
+basic data structures for processes. Process interconnection (kinship, signals, sockets). Process ownership and rights. Helpers for syscalls: `fork`, `wait`, `_exit`, `getuid`, `signal`, `kill`. Process interruptions, memory separation, and multitasking.
 
 ### v0.5.0 - Filesystem
 
-A complete interface to read/write an IDE. A complete interface to read/write/delete an ext2 filesystem. A basic file tree (`/sys`, `/var`, `/dev`, `/proc`, `/sys`).
+a complete interface to read/write an IDE, complete interface to read/write/delete an ext2 filesystem, basic file tree (`/sys`, `/var`, `/dev`, `/proc`, `/sys`).
 
 ### v0.6.0 - Syscalls, Sockets & Environment
 
-A complete syscall table and syscall system. A complete Unix environment. User accounts with login and password. Password protection. Inter-process communication sockets. A Unix-like filesystem hierarchy.
+a complete syscall table and syscall system, complete Unix environment, user accounts with login and password, password protection, inter-process communication sockets, Unix-like filesystem hierarchy.
 
 ### v0.7.0 - Modules
 
-Registering kernel modules (creation/destruction). Loading modules at boot time. Communication and callback interfaces between the kernel and modules.
+registering kernel modules (creation/destruction), loading modules at boot time, implementing functions for communication/callback between the kernel and the modules.
 
 ### v0.8.0 - ELF
 
-A complete interface to read, parse, store, and execute ELF files. Syscalls to read ELF files and launch processes from them. A kernel module in ELF format, ready to be inserted at runtime.
+a complete interface to read, parse, store, and execute ELF files, syscalls to read ELF files and launch a process with them, a kernel module in ELF, ready to be inserted at run time.
+
+### v0.9.0 - N / A
 
 ### v1.0.0 - First Stable Release
 
-Fully functional basic binaries (`/bin/*`). A libc implementation. A POSIX-compliant shell.
+fully functional basic binaries (`/bin/*`), libc implementation, POSIX-compliant shell.
 
 ## License
 
