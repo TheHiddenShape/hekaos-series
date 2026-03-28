@@ -12,7 +12,7 @@ This is a series leading to v1.0.0, the first stable release of a fully function
 - **PIC (8259)** - remapped IRQ 0-15 to INT 32-47
 - **ISR handlers** - exception handling with CR2 reporting for page faults
 
-### Memory Management
+### Memory management
 - **PMM (Physical Memory Manager)** - bitmap-based frame allocator managing 64 MiB of physical RAM (4 KiB frames starting at 4 MiB)
 - **Paging (VMM)** - 32-bit protected mode paging with identity-mapped first 4 MiB, recursive page directory (PD[1023]), 3GB/1GB kernel/user split
 - **kmalloc / kfree** - kernel heap allocator (`0xC0000000`–`0xEFFFFFFF`) with first-fit strategy, 8-byte alignment, forward/backward coalescing, and auto-growing pages. Includes `kbrk`, `ksize`, `kmalloc_query`
@@ -24,7 +24,7 @@ This is a series leading to v1.0.0, the first stable release of a fully function
 - **Keyboard driver** - PS/2 keyboard input via IRQ1 with US QWERTY scancode-to-ASCII conversion
 - **I/O ports** - `inb`/`outb`/`outw`/`io_wait` primitives
 
-### Kernel Utilities
+### Kernel utilities
 - **printk** - printf-style kernel logging (`%s`, `%d`, `%u`, `%x`, `%p`, `%c`) with log levels (emerg → debug) and 4 KiB circular ring buffer
 - **memset / strlen / strcmp** - basic klib string and memory utilities
 - **Kernel stack info** - runtime stack layout and usage reporting
@@ -60,7 +60,7 @@ make run-bin        # Boot the raw binary in QEMU (no GRUB)
 
 ## Roadmap
 
-### v0.1.0 - Boot Sequence Primitives ✅
+### v0.1.0 - Primitives boot sequences ✅
 
 a bootable kernel loaded by GRUB, built on an assembly entry point, with a minimal library providing basic types and utility functions. Writes to VGA for screen output. Configures and loads the GDT and IDT to handle keyboard interrupts.
 
@@ -80,7 +80,7 @@ basic data structures for processes. Process interconnection (kinship, signals, 
 
 a complete interface to read/write an IDE, complete interface to read/write/delete an ext2 filesystem, basic file tree (`/sys`, `/var`, `/dev`, `/proc`, `/sys`).
 
-### v0.6.0 - Syscalls, Sockets & Environment
+### v0.6.0 - Syscalls, sockets & environment
 
 a complete syscall table and syscall system, complete Unix environment, user accounts with login and password, password protection, inter-process communication sockets, Unix-like filesystem hierarchy.
 
@@ -94,7 +94,7 @@ a complete interface to read, parse, store, and execute ELF files, syscalls to r
 
 ### v0.9.0 - N / A
 
-### v1.0.0 - First Stable Release
+### v1.0.0 - First stable release
 
 fully functional basic binaries (`/bin/*`), libc implementation, POSIX-compliant shell.
 
