@@ -40,6 +40,8 @@ _Static_assert (offsetof (struct trap_frame, user_esp) == 56,
                 "trap_frame: user_esp offset wrong");
 _Static_assert (offsetof (struct trap_frame, user_ss) == 60,
                 "trap_frame: user_ss offset wrong");
+_Static_assert (sizeof (struct trap_frame) == 64,
+                "trap_frame: size wrong (padding or mistyped field)");
 
 void
 trap_frame_display (struct trap_frame *tframe)
