@@ -1,6 +1,9 @@
 #include "trap_frame.h"
 #include "printk.h"
 #include <stddef.h>
+#include <stdint.h>
+
+#define STACK_TRACE_MAX_DEPTH 16
 
 /*
  * Compile-time guard: ensures no accidental padding is introduced if the
@@ -55,5 +58,45 @@ trap_frame_display (struct trap_frame *tframe)
     pr_debug ("  ESI=0x%x  EDI=0x%x  EBP=0x%x  ESP=0x%x\n", tframe->esi,
               tframe->edi, tframe->ebp, tframe->esp_saved);
     pr_debug ("  DS=0x%x\n", tframe->ds);
+    printk ("\n");
+}
+
+/*
+ * Walk the EBP frame chain starting from the EBP saved in the trap frame.
+ * Each frame on the stack looks like:
+ *   [EBP+0] = saved EBP of the caller
+ *   [EBP+4] = ret address into the caller
+ *
+ * We stop when EBP is NULL, unaligned (corrupt frame), or after
+ * STACK_TRACE_MAX_DEPTH levels.
+ */
+void
+trap_frame_stack_trace (struct trap_frame *tframe)
+{
+    uint32_t ebp = tframe->ebp;
+
+    pr_debug ("#### stack trace ####\n");
+
+    for (int depth = 0; depth < STACK_TRACE_MAX_DEPTH; depth++)
+    {
+        if (!ebp || (ebp & 0x3))
+        {
+            break;
+        }
+
+        uint32_t ret_addr = *((uint32_t *)(ebp + 4));
+
+        pr_debug ("  [%d] EBP=%x  RET=%x\n", depth, ebp, ret_addr);
+
+        uint32_t next_ebp = *((uint32_t *)ebp);
+
+        /* Frame chain must move upward (toward higher addresses) */
+        if (next_ebp <= ebp)
+        {
+            break;
+        }
+        ebp = next_ebp;
+    }
+
     printk ("\n");
 }

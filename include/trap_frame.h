@@ -40,6 +40,7 @@ struct trap_frame
 };
 
 void trap_frame_display (struct trap_frame *frame);
+void trap_frame_stack_trace (struct trap_frame *frame);
 void trigger_trap_test (void);
 
 #endif

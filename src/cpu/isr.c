@@ -61,6 +61,7 @@ isr_handler (struct trap_frame *frame)
         {
             bool pass = true;
             trap_frame_display (frame);
+            trap_frame_stack_trace (frame);
             if (frame->int_no != 66)
             {
                 pr_err ("FAIL: int_no=%d\n", frame->int_no);
