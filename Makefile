@@ -24,6 +24,11 @@ CC = $(TARGET_PATH)-gcc
 AS = $(TARGET_PATH)-as
 LD = $(TARGET_PATH)-ld
 
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+QEMU_KVM = -enable-kvm
+endif
+
 ASFLAGS = -I$(SRC_DIR) -I$(BOOT_DIR) -I$(CPU_DIR) -I$(DRIVERS_DIR)
 CFLAGS  = -std=gnu99 -ffreestanding -Wall -Wextra -fno-builtin -fno-stack-protector -I$(SRC_DIR) -Iinclude -MMD -MP
 LDFLAGS = -T $(LINKER_SCRIPT) -ffreestanding -nostdlib -nodefaultlibs
@@ -72,11 +77,11 @@ $(OBJ_DIR) $(KERNEL_DIR):
 
 run-bin:
 	@test -f $(KERNEL_BIN) || { echo "Error: $(KERNEL_BIN) not found. Run 'make docker-build' first."; exit 1; }
-	qemu-system-i386 -kernel $(KERNEL_BIN)
+	qemu-system-i386 $(QEMU_KVM) -kernel $(KERNEL_BIN)
 
 run-iso:
 	@test -f $(KERNEL_ISO) || { echo "Error: $(KERNEL_ISO) not found. Run 'make docker-build' first."; exit 1; }
-	qemu-system-i386 -cdrom $(KERNEL_ISO)
+	qemu-system-i386 $(QEMU_KVM) -cdrom $(KERNEL_ISO)
 
 clean:
 	rm -rf $(OBJ_DIR) $(KERNEL_DIR)
