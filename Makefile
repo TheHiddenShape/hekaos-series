@@ -114,12 +114,13 @@ format:
 
 help:
 	@echo "Available targets:\n"
-	@echo "  all              - Build kernel binary and ISO (default)"
-	@echo "  run-bin          - Run kernel binary with QEMU"
-	@echo "  run-iso          - Run ISO with QEMU"
-	@echo "  docker-build     - Build kernel using Docker"
-	@echo "  docker-prune-all - Prune all Docker resources"
-	@echo "  clean            - Clean build artifacts"
-	@echo "  format           - Format source code with clang-format"
+	@echo "  all              - build kernel binary and ISO (default)"
+	@echo "  run-bin          - run kernel binary with QEMU"
+	@echo "  run-iso          - run ISO with QEMU"
+	@echo "  docker-build     - build kernel using Docker"
+	@echo "  docker-prune-all - prune all Docker resources"
+	@echo "  clean            - clean build artifacts"
+	@echo "  format           - format source code with clang-format"
+	@echo "  binary-size      - show binary and ISO sizes"
 
 .PHONY: all clean run-iso run-bin docker-build docker-prune-all format help binary-size
