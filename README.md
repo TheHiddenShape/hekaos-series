@@ -15,10 +15,11 @@ This is a series leading to v1.0.0, the first stable release of a fully function
 - **ISR handlers**: exception handling with CR2 reporting for page faults
 
 ### Memory management
-- **PMM (Physical Memory Manager)**: bitmap-based frame allocator managing 64 MiB of physical RAM (4 KiB frames starting at 4 MiB)
+- **PMM (Physical Memory Manager)**: bitmap-based frame allocator managing 64 MiB of physical RAM (4 KiB frames starting at 4 MiB). Provides `phys_alloc_frame` (first-fit) and `phys_alloc_contiguous(n)` (sliding-window scan for n physically adjacent frames), used for DMA and contiguous buffer requirements
 - **Paging (VMM)**: 32-bit protected mode paging with identity-mapped first 4 MiB, recursive page directory (PD[1023]), 3GB/1GB kernel/user split
-- **kmalloc / kfree**: kernel heap allocator (`0xC0000000`–`0xEFFFFFFF`) with first-fit strategy, 8-byte alignment, forward/backward coalescing, and auto-growing pages. Includes `kbrk`, `ksize`, `kmalloc_query`
-- **vmalloc / vfree**: virtual page allocator (`0xF0000000`–`0xFFBFFFFF`) for large virtually contiguous allocations across physically fragmented pages. Includes `vbrk`, `vsize`, `vmalloc_query`
+- **kmem_dyn_alloc / kmem_free**: general-purpose dynamic heap allocator (`0xC0000000`–`0xCFFFFFFF`), byte-precise with 8-byte alignment, doubly-linked free-list, first-fit strategy, bi-directional coalescing, auto-growing via `alloc_page`. Includes `kmem_brk`, `kmem_size`, `kmem_dyn_alloc_query`. Use for allocations > 256 bytes or arbitrary sizes
+- **kmalloc / kfree**: chunk pool allocator (`0xD0000000`–`0xEFFFFFFF`) with 6 fixed-size caches (8 / 16 / 32 / 64 / 128 / 256 bytes). O(1) alloc and free via intrusive free-lists. Each pool page carries a header tracking `obj_size`, `free_count`, and `total_count`. Full pages are returned to the PMM automatically. Panics on requests > 256 bytes — use `kmem_alloc` instead. Includes `ksize`, `kmalloc_query`
+- **vmalloc / vfree**: virtual page allocator (`0xF0000000`–`0xFFBFFFFF`) for large virtually contiguous allocations backed by physically non-contiguous frames. Includes `vbrk`, `vsize`, `vmalloc_query`
 - **Kernel panic**: halts CPU with interrupts disabled on unrecoverable errors
 
 ### Drivers & I/O
