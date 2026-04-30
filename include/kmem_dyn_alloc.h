@@ -6,10 +6,12 @@
 
 /* general-purpose kernel allocator: byte-precise, 8-byte aligned,
  * doubly-linked free-list with first-fit and bi-directional coalescing.
- * virtual heap: 0xC0000000 – 0xEFFFFFFF */
+ * virtual heap: 0xC0000000 – 0xCFFFFFFF (chunk pool zone lives above at
+ * 0xD0000000)
+ */
 
 #define KHEAP_VIRT_BASE 0xC0000000
-#define KHEAP_VIRT_MAX 0xEFFFFFFF
+#define KHEAP_VIRT_MAX 0xCFFFFFFF
 
 void kmem_dyn_alloc_init (void);
 void *kmem_alloc (size_t size);

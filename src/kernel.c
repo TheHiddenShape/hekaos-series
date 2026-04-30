@@ -4,6 +4,7 @@
 #include "io.h"
 #include "klib.h"
 #include "kmalloc.h"
+#include "kmem_dyn_alloc.h"
 #include "paging.h"
 #include "phys_page_frame.h"
 #include "pic.h"
@@ -427,21 +428,13 @@ shell_memdump (void)
 
     kmalloc_stats_t ks;
     kmalloc_query (&ks);
-    terminal_writestring ("kmalloc: heap=");
-    terminal_write_hex (KHEAP_VIRT_BASE);
-    terminal_writestring ("-");
-    terminal_write_hex (ks.heap_end);
+    terminal_writestring ("kmalloc (chunk pool): zone=");
+    terminal_write_hex (KCPOOL_VIRT_BASE);
     terminal_writestring (" | ");
-    terminal_write_uint (ks.total_blocks);
-    terminal_writestring (" blocks (");
-    terminal_write_uint (ks.used_blocks);
-    terminal_writestring (" used, ");
-    terminal_write_uint (ks.free_blocks);
-    terminal_writestring (" free) | ");
-    terminal_write_uint (ks.used_bytes);
-    terminal_writestring ("B used / ");
-    terminal_write_uint (ks.free_bytes);
-    terminal_writestring ("B free\n");
+    terminal_write_uint (ks.pool_pages);
+    terminal_writestring (" pages | ");
+    terminal_write_uint (ks.free_objects);
+    terminal_writestring (" free objects\n");
 
     vmalloc_stats_t vs;
     vmalloc_query (&vs);
@@ -617,7 +610,8 @@ kernel_main (void)
     phys_mem_init ();
     phys_mem_test ();
     paging_test ();
-    heap_init ();
+    kmem_dyn_alloc_init ();
+    kmalloc_init ();
     kmalloc_test ();
     vmalloc_init ();
     vmalloc_test ();
