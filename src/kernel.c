@@ -611,6 +611,7 @@ kernel_main (void)
     phys_mem_test ();
     paging_test ();
     kmem_dyn_alloc_init ();
+    kmem_dyn_alloc_test ();
     kmalloc_init ();
     kmalloc_test ();
     vmalloc_init ();
