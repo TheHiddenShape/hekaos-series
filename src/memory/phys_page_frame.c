@@ -109,6 +109,68 @@ phys_free_frame (void *frame)
     bitmap_clear (index);
 }
 
+void *
+phys_alloc_contiguous (uint32_t n_frames)
+{
+    if (n_frames == 0)
+    {
+        return (void *)0;
+    }
+
+    uint32_t count = 0;
+    uint32_t start = 0;
+    uint32_t i;
+
+    for (i = 0; i < PHYS_TOTAL_FRAMES; i++)
+    {
+        if (!bitmap_test (i))
+        {
+            if (count == 0)
+            {
+                start = i;
+            }
+            if (++count == n_frames)
+            {
+                for (uint32_t j = start; j < start + n_frames; j++)
+                {
+                    bitmap_set (j);
+                }
+                return (void *)(start * PHYS_FRAME_SIZE);
+            }
+        }
+        else
+        {
+            count = 0;
+        }
+    }
+
+    return (void *)0;
+}
+
+void
+phys_free_contiguous (void *base, uint32_t n_frames)
+{
+    uint32_t addr = (uint32_t)base;
+    uint32_t reserved = PHYS_REGION_START / PHYS_FRAME_SIZE;
+
+    if (n_frames == 0 || (addr & (PHYS_FRAME_SIZE - 1)))
+    {
+        return;
+    }
+
+    uint32_t start = addr / PHYS_FRAME_SIZE;
+
+    if (start < reserved || n_frames > PHYS_TOTAL_FRAMES - start)
+    {
+        return;
+    }
+
+    for (uint32_t i = start; i < start + n_frames; i++)
+    {
+        bitmap_clear (i);
+    }
+}
+
 uint32_t
 phys_free_count (void)
 {
@@ -323,6 +385,190 @@ phys_mem_test (void)
         else
         {
             kpanic ("PMM reinit: state not restored");
+        }
+    }
+
+    /* phys_alloc_contiguous: n=1 behaves like phys_alloc_frame */
+    {
+        uint32_t before = phys_free_count ();
+        void *base = phys_alloc_contiguous (1);
+        uint32_t after = phys_free_count ();
+
+        int ok = base != (void *)0
+                 && ((uint32_t)base & (PHYS_FRAME_SIZE - 1)) == 0
+                 && (uint32_t)base >= PHYS_REGION_START
+                 && (uint32_t)base < PHYS_MEM_SIZE && after == before - 1;
+        if (ok)
+        {
+            pr_info ("PMM contiguous n=1: valid frame at 0x%x\n",
+                     (uint32_t)base);
+        }
+        else
+        {
+            kpanic ("PMM contiguous n=1: invalid result");
+        }
+
+        phys_free_contiguous (base, 1);
+        if (phys_free_count () == before)
+        {
+            pr_info ("PMM contiguous n=1: free count restored\n");
+        }
+        else
+        {
+            kpanic ("PMM contiguous n=1: free count not restored");
+        }
+    }
+
+    /* phys_alloc_contiguous: n=8 returns 8 physically adjacent frames */
+    {
+        uint32_t before = phys_free_count ();
+        void *base = phys_alloc_contiguous (8);
+        uint32_t after = phys_free_count ();
+
+        int ok = base != (void *)0
+                 && ((uint32_t)base & (PHYS_FRAME_SIZE - 1)) == 0
+                 && (uint32_t)base >= PHYS_REGION_START && after == before - 8;
+        if (ok)
+        {
+            pr_info ("PMM contiguous n=8: base at 0x%x, count %d -> %d\n",
+                     (uint32_t)base, before, after);
+        }
+        else
+        {
+            kpanic ("PMM contiguous n=8: invalid result");
+        }
+
+        /* verify all 8 frames are marked used in the bitmap */
+        uint32_t start_frame = (uint32_t)base / PHYS_FRAME_SIZE;
+        int all_set = 1;
+        for (uint32_t k = start_frame; k < start_frame + 8; k++)
+        {
+            if (!bitmap_test (k))
+            {
+                all_set = 0;
+                break;
+            }
+        }
+        if (all_set)
+        {
+            pr_info ("PMM contiguous n=8: all 8 frames marked used\n");
+        }
+        else
+        {
+            kpanic ("PMM contiguous n=8: bitmap inconsistency");
+        }
+
+        phys_free_contiguous (base, 8);
+        if (phys_free_count () == before)
+        {
+            pr_info ("PMM contiguous n=8: free count restored\n");
+        }
+        else
+        {
+            kpanic ("PMM contiguous n=8: free count not restored after free");
+        }
+    }
+
+    /* phys_alloc_contiguous: n=0 returns NULL */
+    {
+        void *base = phys_alloc_contiguous (0);
+        if (base == (void *)0)
+        {
+            pr_info ("PMM contiguous n=0: returns null\n");
+        }
+        else
+        {
+            kpanic ("PMM contiguous n=0: expected null");
+        }
+    }
+
+    /* phys_alloc_contiguous: n > available returns NULL */
+    {
+        void *base = phys_alloc_contiguous (PHYS_TOTAL_FRAMES + 1);
+        if (base == (void *)0)
+        {
+            pr_info ("PMM contiguous n>max: returns null\n");
+        }
+        else
+        {
+            kpanic ("PMM contiguous n>max: expected null");
+        }
+    }
+
+    /* phys_alloc_contiguous: used frame breaks a run, must skip to next valid
+     * run */
+    {
+        /* after reinit: frames 1024+ are free (first-fit order guaranteed)
+         * alloc a, b, c sequentially → frames 1024, 1025, 1026
+         * free b (frame 1025) → hole:
+         * [1024=used][1025=free][1026=used][1027+=free] alloc_contiguous(2):
+         * run [1025] is length 1, insufficient → skip next run starts at 1027,
+         * length >= 2 → return 0x403000 */
+        void *a = phys_alloc_frame ();
+        void *b = phys_alloc_frame ();
+        void *c = phys_alloc_frame ();
+        phys_free_frame (b);
+
+        uint32_t before = phys_free_count ();
+        void *run = phys_alloc_contiguous (2);
+
+        int ok = run != (void *)0
+                 && ((uint32_t)run & (PHYS_FRAME_SIZE - 1)) == 0
+                 && (uint32_t)run >= (uint32_t)c + PHYS_FRAME_SIZE
+                 && before - phys_free_count () == 2;
+        if (ok)
+        {
+            pr_info ("PMM contiguous frag: found run at 0x%x, skipped hole at "
+                     "0x%x\n",
+                     (uint32_t)run, (uint32_t)b);
+        }
+        else
+        {
+            kpanic ("PMM contiguous frag: fragmentation handling failed");
+        }
+
+        /* verify the two allocated frames are consecutive in the bitmap */
+        uint32_t sf = (uint32_t)run / PHYS_FRAME_SIZE;
+        if (bitmap_test (sf) && bitmap_test (sf + 1))
+        {
+            pr_info (
+                "PMM contiguous frag: both frames correctly marked used\n");
+        }
+        else
+        {
+            kpanic ("PMM contiguous frag: bitmap inconsistency after skip");
+        }
+
+        phys_free_contiguous (run, 2);
+        phys_free_frame (a);
+        phys_free_frame (c);
+    }
+
+    /* phys_free_contiguous: unaligned base is ignored */
+    {
+        uint32_t before = phys_free_count ();
+        phys_free_contiguous ((void *)0x00400001, 1);
+        if (phys_free_count () == before)
+        {
+            pr_info ("PMM free_contiguous: unaligned base rejected\n");
+        }
+        else
+        {
+            kpanic ("PMM free_contiguous: unaligned base was accepted");
+        }
+    }
+
+    /* phys_free_contiguous: reserved region base is ignored */
+    {
+        uint32_t before = phys_free_count ();
+        phys_free_contiguous ((void *)0x00001000, 1);
+        if (phys_free_count () == before)
+        {
+            pr_info ("PMM free_contiguous: reserved base rejected\n");
+        }
+        else
+        {
+            kpanic ("PMM free_contiguous: reserved base was accepted");
         }
     }
 

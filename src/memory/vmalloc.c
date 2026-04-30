@@ -1,6 +1,6 @@
 #include "vmalloc.h"
-#include "kmalloc.h"
 #include "klib.h"
+#include "kmalloc.h"
 #include "kpanic.h"
 #include "paging.h"
 #include "printk.h"
@@ -14,8 +14,8 @@ static uint32_t bitmap[BITMAP_WORDS];
 
 struct vmalloc_region
 {
-    uint32_t             start;
-    uint32_t             npages;
+    uint32_t start;
+    uint32_t npages;
     struct vmalloc_region *next;
 };
 
@@ -90,10 +90,10 @@ vmalloc (uint32_t npages)
                     }
                     bitmap_set (j);
                 }
-                region->start  = start;
+                region->start = start;
                 region->npages = npages;
-                region->next   = region_list;
-                region_list  = region;
+                region->next = region_list;
+                region_list = region;
                 return (void *)(VMALLOC_BASE + start * PAGE_SIZE);
             }
         }
@@ -124,11 +124,11 @@ vfree (void *addr)
     uint32_t idx = (vaddr - VMALLOC_BASE) / PAGE_SIZE;
 
     struct vmalloc_region *prev = NULL;
-    struct vmalloc_region *cur  = region_list;
+    struct vmalloc_region *cur = region_list;
     while (cur && cur->start != idx)
     {
         prev = cur;
-        cur  = cur->next;
+        cur = cur->next;
     }
     if (!cur)
     {
