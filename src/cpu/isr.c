@@ -5,6 +5,7 @@
 #include "pic.h"
 #include "printk.h"
 #include "trap_frame.h"
+#include "vga.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -126,13 +127,48 @@ irq_handler (struct trap_frame *frame)
     {
         case 33: /* IRQ 1 = keyboard */
         {
+            static bool extended = false;
             uint8_t scancode = inb (0x60);
 
+            if (scancode == 0xE0)
+            {
+                extended = true;
+                break;
+            }
+            if (extended)
+            {
+                extended = false;
+                if (!(scancode & 0x80))
+                {
+                    switch (scancode)
+                    {
+                        case 0x48: /* arrow up - scroll one line up */
+                            terminal_scroll_lines (-1);
+                            break;
+                        case 0x50: /* arrow down - scroll one line down */
+                            terminal_scroll_lines (1);
+                            break;
+                        case 0x49: /* page up - scroll one page up */
+                            terminal_scroll_lines (-VGA_USABLE_ROWS);
+                            break;
+                        case 0x51: /* page down - scroll one page down */
+                            terminal_scroll_lines (VGA_USABLE_ROWS);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                break;
+            }
+            /* standard scancode */
             if (!(scancode & 0x80))
             {
+                terminal_scroll_reset ();
                 char c = scancode_to_ascii[scancode];
                 if (c)
+                {
                     shell_add_char (c);
+                }
             }
             break;
         }

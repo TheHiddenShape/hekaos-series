@@ -40,7 +40,7 @@ CPU_OBJS = $(OBJ_DIR)/gdt.o $(OBJ_DIR)/gdt_flush.o $(OBJ_DIR)/idt.o $(OBJ_DIR)/i
            $(OBJ_DIR)/rdtsc.o $(OBJ_DIR)/paging.o $(OBJ_DIR)/paging_stubs.o \
            $(OBJ_DIR)/trap_frame.o $(OBJ_DIR)/trap_frame_stubs.o
 
-DRIVERS_OBJS = $(OBJ_DIR)/io.o $(OBJ_DIR)/pic.o
+DRIVERS_OBJS = $(OBJ_DIR)/io.o $(OBJ_DIR)/pic.o $(OBJ_DIR)/vga.o
 
 MEMORY_OBJS = $(OBJ_DIR)/phys_page_frame.o $(OBJ_DIR)/kmem_dyn_alloc.o $(OBJ_DIR)/kmalloc.o $(OBJ_DIR)/vmalloc.o
 
