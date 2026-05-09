@@ -29,16 +29,16 @@ idt_init (void)
         idt_set_gate (i, 0, 0, 0);
     }
 
-    idt_set_gate (0,  (uint32_t)isr0,  0x08, 0x8E);
-    idt_set_gate (1,  (uint32_t)isr1,  0x08, 0x8E);
-    idt_set_gate (2,  (uint32_t)isr2,  0x08, 0x8E);
-    idt_set_gate (3,  (uint32_t)isr3,  0x08, 0x8E);
-    idt_set_gate (4,  (uint32_t)isr4,  0x08, 0x8E);
-    idt_set_gate (5,  (uint32_t)isr5,  0x08, 0x8E);
-    idt_set_gate (6,  (uint32_t)isr6,  0x08, 0x8E);
-    idt_set_gate (7,  (uint32_t)isr7,  0x08, 0x8E);
-    idt_set_gate (8,  (uint32_t)isr8,  0x08, 0x8E);
-    idt_set_gate (9,  (uint32_t)isr9,  0x08, 0x8E);
+    idt_set_gate (0, (uint32_t)isr0, 0x08, 0x8E);
+    idt_set_gate (1, (uint32_t)isr1, 0x08, 0x8E);
+    idt_set_gate (2, (uint32_t)isr2, 0x08, 0x8E);
+    idt_set_gate (3, (uint32_t)isr3, 0x08, 0x8E);
+    idt_set_gate (4, (uint32_t)isr4, 0x08, 0x8E);
+    idt_set_gate (5, (uint32_t)isr5, 0x08, 0x8E);
+    idt_set_gate (6, (uint32_t)isr6, 0x08, 0x8E);
+    idt_set_gate (7, (uint32_t)isr7, 0x08, 0x8E);
+    idt_set_gate (8, (uint32_t)isr8, 0x08, 0x8E);
+    idt_set_gate (9, (uint32_t)isr9, 0x08, 0x8E);
     idt_set_gate (10, (uint32_t)isr10, 0x08, 0x8E);
     idt_set_gate (11, (uint32_t)isr11, 0x08, 0x8E);
     idt_set_gate (12, (uint32_t)isr12, 0x08, 0x8E);
@@ -49,7 +49,7 @@ idt_init (void)
     idt_set_gate (17, (uint32_t)isr17, 0x08, 0x8E);
     idt_set_gate (18, (uint32_t)isr18, 0x08, 0x8E);
     idt_set_gate (19, (uint32_t)isr19, 0x08, 0x8E);
-    idt_set_gate (33, (uint32_t)irq1,  0x08, 0x8E);
+    idt_set_gate (33, (uint32_t)irq1, 0x08, 0x8E);
     idt_set_gate (66, (uint32_t)isr66, 0x08, 0x8E);
 
     idt_load ((uint32_t)&idp);
