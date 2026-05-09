@@ -5,6 +5,7 @@
 #include "paging.h"
 #include "pic.h"
 #include "printk.h"
+#include "syscall.h"
 #include "trap_frame.h"
 #include "vga.h"
 #include <stdbool.h>
@@ -160,6 +161,9 @@ isr_handler (struct trap_frame *frame)
         case 19: /* todo: check CPL, send SIGFPE to process in userspace */
             trap_frame_display (frame);
             kpanic ("simd floating-point exception");
+            break;
+        case 128:
+            syscall_dispatch (frame);
             break;
         case 66:
         {

@@ -46,7 +46,8 @@ extern void isr18 (void); /* machine check */
 extern void isr19 (void); /* SIMD floating-point exception */
 
 /* software interrupts */
-extern void isr66 (void); /* trap frame test (0x42) */
+extern void isr66 (void);  /* trap frame test (0x42) */
+extern void isr128 (void); /* syscall (int 0x80) */
 
 /* hardware interrupts (IRQs) */
 extern void irq1 (void); /* keyboard (IRQ 1) */
