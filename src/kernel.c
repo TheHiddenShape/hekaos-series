@@ -2,6 +2,7 @@
 #include "idt.h"
 #include "interrupts.h"
 #include "io.h"
+#include "keyboard.h"
 #include "klib.h"
 #include "kmalloc.h"
 #include "kmem_dyn_alloc.h"
@@ -157,6 +158,7 @@ shell_help (void)
     terminal_writestring ("  halt     - halt the CPU\n");
     terminal_writestring (
         "  traptest - trigger INT 0x42 and dump the trap frame\n");
+    terminal_writestring ("  keymap   - qwerty | azerty\n");
 }
 
 void
@@ -191,6 +193,16 @@ shell_execute (const char *cmd)
         terminal_writestring ("triggering INT 0x42 (trap frame test)...\n");
         trigger_trap_test ();
         terminal_writestring ("returned from trap, trap frame OK\n");
+    }
+    else if (strcmp (cmd, "keymap azerty") == 0)
+    {
+        set_keymap (KEYMAP_AZERTY);
+        terminal_writestring ("keymap: azerty\n");
+    }
+    else if (strcmp (cmd, "keymap qwerty") == 0)
+    {
+        set_keymap (KEYMAP_QWERTY);
+        terminal_writestring ("keymap: qwerty\n");
     }
     else if (cmd[0] != '\0')
     {

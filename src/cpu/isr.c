@@ -1,5 +1,6 @@
 #include "interrupts.h"
 #include "io.h"
+#include "keyboard.h"
 #include "kpanic.h"
 #include "paging.h"
 #include "pic.h"
@@ -12,7 +13,7 @@
 extern void shell_add_char (char c);
 
 /* scancode to ASCII table (US QWERTY, lowercase) */
-static const char scancode_to_ascii[128]
+static const char keymap_qwerty[128]
     = { 0,   27,   '1',  '2', '3',  '4', '5', '6', '7', '8', '9', '0', '-',
         '=', '\b', '\t', 'q', 'w',  'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
         '[', ']',  '\n', 0,   'a',  's', 'd', 'f', 'g', 'h', 'j', 'k', 'l',
@@ -23,6 +24,36 @@ static const char scancode_to_ascii[128]
         0,   0,    0,    0,   0,    0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,    0,    0,   0,    0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,    0,    0,   0,    0,   0,   0,   0,   0 };
+
+/* scancode to ASCII table (FR AZERTY, lowercase) */
+static const char keymap_azerty[128]
+    = { 0,   27,   '&',  0,   '"', '\'', '(', '-', 0,   '_', 0,   0,   ')',
+        '=', '\b', '\t', 'a', 'z', 'e',  'r', 't', 'y', 'u', 'i', 'o', 'p',
+        '^', '$',  '\n', 0,   'q', 's',  'd', 'f', 'g', 'h', 'j', 'k', 'l',
+        'm', 0,    0,    0,   '*', 'w',  'x', 'c', 'v', 'b', 'n', ',', ';',
+        ':', '!',  0,    '*', 0,   ' ',  0,   0,   0,   0,   0,   0,   0,
+        0,   0,    0,    0,   0,   0,    0,   0,   0,   0,   0,   0,   0,
+        0,   0,    0,    0,   0,   0,    0,   0,   0,   0,   0,   0,   0,
+        0,   0,    0,    0,   0,   0,    0,   0,   0,   0,   0,   0,   0,
+        0,   0,    0,    0,   0,   0,    0,   0,   0,   0,   0,   0,   0,
+        0,   0,    0,    0,   0,   0,    0,   0,   0,   0 };
+
+static const char *active_keymap = keymap_qwerty;
+
+void
+set_keymap (keymap_t layout)
+{
+    switch (layout)
+    {
+        case KEYMAP_AZERTY:
+            active_keymap = keymap_azerty;
+            break;
+        case KEYMAP_QWERTY:
+        default:
+            active_keymap = keymap_qwerty;
+            break;
+    }
+}
 
 static void
 gpf_handler (struct trap_frame *frame)
@@ -236,7 +267,7 @@ irq_handler (struct trap_frame *frame)
             if (!(scancode & 0x80))
             {
                 terminal_scroll_reset ();
-                char c = scancode_to_ascii[scancode];
+                char c = active_keymap[scancode];
                 if (c)
                 {
                     shell_add_char (c);

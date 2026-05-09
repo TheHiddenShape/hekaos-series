@@ -36,6 +36,7 @@ preview**
 | `reboot`   | reboot the system                                   |
 | `shutdown` | power off the system (ACPI)                         |
 | `halt`     | halt the CPU                                        |
+| `keymap`   | switch keyboard layout (`qwerty` \| `azerty`)       |
 ## Building & Running
 
 ### Build with Docker (recommended)
