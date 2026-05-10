@@ -15,7 +15,7 @@ enum task_state
 
 /*
  * Architecture-specific CPU state for a process.
- * Each process has exactly one execution context — isolated here so arch
+ * Each process has exactly one execution context : isolated here so arch
  * extensions (FPU, segments) can be added without touching struct task.
  */
 struct task_thread
@@ -26,11 +26,29 @@ struct task_thread
 };
 
 /*
- * task descriptor — represents a process.
+ * Userland virtual address space descriptor.
+ * Embedded by value in task; becomes a pointer with refcount when threads land
+ * (clone(CLONE_VM) shares the same mm between tasks).
  *
- * Planned extensions: mm_struct for userland memory (paging, ring3), children
- * and sibling pointers for a full process tree, and an exit_code collected by
- * the parent on TASK_ZOMBIE.
+ * Planned: struct vma *mmap: VMA list (code, data, BSS, heap, stack, mmaps)
+ */
+struct mm_struct
+{
+    uint32_t
+        pgdir; /* physical address of the page directory, loaded into CR3 */
+
+    uint32_t code_start, code_end; /* bounds of the text segment */
+    uint32_t data_start, data_end; /* bounds of the data/BSS segment */
+    uint32_t stack_top; /* top of the userland stack (grows downward) */
+
+    void *heap_brk; /* current heap break: top of the heap segment (sbrk
+                       target) */
+};
+
+/*
+ * task descriptor: represents a process.
+ *
+ * Planned extensions: exit_code collected by the parent on TASK_ZOMBIE.
  */
 struct task
 {
@@ -41,10 +59,21 @@ struct task
     uint32_t pid;        /* unique process identifier */
     struct task *parent; /* direct pointer to parent task (NULL for init) */
 
-    void *kstack; /* base address of this task's kernel stack */
+    /* n-ary process tree: children is the first child, sibling chains the rest
+     */
+    struct task *children;
+    struct task *sibling;
+
+    void *kstack;        /* base address of this task's kernel stack */
+    struct mm_struct mm; /* userland virtual address space descriptor */
 
     struct task *next; /* intrusive singly-linked list for the scheduler,
                         * will become a list_head when needed */
+
+    uint32_t uid;  /* real user id: owner of this process */
+    uint32_t euid; /* effective user id: used for inter-process permission
+                    * checks (signaling, ptrace); future: gid/egid when FS
+                    * permissions land */
 
     sigset_t pending_signals;            /* bitmask of undelivered signals */
     sig_handler_t signal_handlers[NSIG]; /* per-signal handler */
