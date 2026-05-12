@@ -3,6 +3,7 @@
 
 #include "signal.h"
 #include "trap_frame.h"
+#include <stddef.h>
 #include <stdint.h>
 
 enum task_state

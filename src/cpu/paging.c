@@ -2,20 +2,18 @@
 #include "kpanic.h"
 #include "phys_page_frame.h"
 #include "printk.h"
+#include "task.h"
 
 #define PD_ENTRIES 1024
 #define PT_ENTRIES 1024
 #define RECURSIVE_PT_BASE 0xFFC00000
 #define RECURSIVE_PD_BASE 0xFFFFF000
-#define PT_POOL_SIZE 16
-#define PT_POOL_ENTRIES PT_ENTRIES
 
-uint32_t page_directory[PD_ENTRIES] __attribute__ ((aligned (PAGE_SIZE)));
+uint32_t page_directories[MAX_PROC][PD_ENTRIES]
+    __attribute__ ((aligned (PAGE_SIZE)));
 uint32_t first_page_table[PT_ENTRIES] __attribute__ ((aligned (PAGE_SIZE)));
 
-static uint32_t pt_pool[PT_POOL_SIZE][PT_POOL_ENTRIES]
-    __attribute__ ((aligned (PAGE_SIZE)));
-static uint32_t pt_pool_next = 0;
+static uint32_t current_pid = 0;
 
 static inline uint32_t *
 get_pt (uint32_t pdindex)
@@ -27,10 +25,11 @@ void
 paging_init (void)
 {
     uint32_t i;
+    uint32_t *pd = page_directories[0];
 
     for (i = 0; i < PD_ENTRIES; i++)
     {
-        page_directory[i] = PAGE_RW; /* non-present, r/w pre-configured */
+        pd[i] = PAGE_RW;
     }
 
     /*
@@ -43,15 +42,14 @@ paging_init (void)
         first_page_table[i] = (i * PAGE_SIZE) | (PAGE_PRESENT | PAGE_RW);
     }
 
-    page_directory[0] = ((uint32_t)first_page_table) | (PAGE_PRESENT | PAGE_RW);
+    pd[0] = ((uint32_t)first_page_table) | (PAGE_PRESENT | PAGE_RW);
     /*
      * recursive mapping: PD[1023] -> PD itself, so the MMU traverses
      * CR3 -> PD[1023] -> PD (as PT) -> PD[1023] -> phys addr of PD.
      * this maps the PD at RECURSIVE_PD_BASE and all PTs at RECURSIVE_PT_BASE+
      */
-    page_directory[1023]
-        = ((uint32_t)page_directory) | (PAGE_PRESENT | PAGE_RW);
-    load_page_directory ((uint32_t *)page_directory);
+    pd[1023] = ((uint32_t)pd) | (PAGE_PRESENT | PAGE_RW);
+    load_page_directory ((uint32_t *)pd);
     enable_paging ();
     pr_info ("paging enabled (identity mapped first 4 MiB)\n");
     printk ("\n");
@@ -90,18 +88,20 @@ map_page (void *physaddr, void *virtualaddr, uint32_t flags)
     uint32_t ptindex = (uint32_t)virtualaddr >> 12 & 0x03FF;
     uint32_t *pd = (uint32_t *)RECURSIVE_PD_BASE;
 
-    if (!(pd[pdindex] & 0x01)) /* check if not PAGE_PRESENT */
+    if (!(pd[pdindex] & 0x01))
     {
-        if (pt_pool_next >= PT_POOL_SIZE)
+        uint32_t *new_pt = phys_alloc_frame ();
+        if (!new_pt)
         {
             return;
         }
-        uint32_t *new_pt = pt_pool[pt_pool_next++];
+        pd[pdindex] = ((uint32_t)new_pt) | (PAGE_PRESENT | PAGE_RW);
+        flush_tlb ((uint32_t)get_pt (pdindex));
+        uint32_t *pt_virt = get_pt (pdindex);
         for (int i = 0; i < PT_ENTRIES; i++)
         {
-            new_pt[i] = 0;
+            pt_virt[i] = 0;
         }
-        pd[pdindex] = ((uint32_t)new_pt) | (PAGE_PRESENT | PAGE_RW);
     }
 
     uint32_t *pt = get_pt (pdindex);
@@ -175,6 +175,35 @@ free_page (void *virtualaddr)
 }
 
 void
+paging_proc_init (uint32_t pid)
+{
+    uint32_t i;
+    uint32_t *pd = page_directories[pid];
+    uint32_t *pd0 = page_directories[0];
+
+    for (i = 0; i < PD_ENTRIES; i++)
+    {
+        pd[i] = PAGE_RW;
+    }
+
+    pd[0] = pd0[0];
+
+    for (i = 768; i < 1023; i++)
+    {
+        pd[i] = pd0[i];
+    }
+
+    pd[1023] = ((uint32_t)pd) | (PAGE_PRESENT | PAGE_RW);
+}
+
+void
+paging_proc_switch (uint32_t pid)
+{
+    current_pid = pid;
+    load_page_directory ((uint32_t *)page_directories[pid]);
+}
+
+void
 paging_test (void)
 {
     pr_info ("#### paging check ####\n");
@@ -202,7 +231,7 @@ paging_test (void)
     /* verify CR3 points to page directory */
     {
         uint32_t cr3 = read_cr3 ();
-        if (cr3 == (uint32_t)page_directory)
+        if (cr3 == (uint32_t)page_directories[0])
         {
             pr_info ("CR3: points to page directory (0x%x)\n", cr3);
         }
