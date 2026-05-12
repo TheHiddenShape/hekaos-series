@@ -1,6 +1,6 @@
 # HekaOS
 
-![alt](https://i.imgur.com/LRGsWcg.jpeg)
+![alt](assets/media/3dhekaos_banner.png)
 
 An x86 monolithic hybrid kernel written from scratch in **C** and **Rust**.
 
