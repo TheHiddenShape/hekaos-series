@@ -40,4 +40,7 @@ void terminal_writestring (const char *data);
 void terminal_scroll_lines (int delta);
 void terminal_scroll_reset (void);
 
+/* Move the hardware cursor to an absolute VGA cell position. */
+void terminal_set_cursor (size_t x, size_t y);
+
 #endif

@@ -83,6 +83,7 @@ struct task
 #define MAX_PROC 128
 
 extern uint32_t task_counter;
+extern struct task *task_list_head;
 
 /* n-ary tree helpers */
 void task_add_child (struct task *parent, struct task *child);

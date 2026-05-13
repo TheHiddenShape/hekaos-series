@@ -1,6 +1,7 @@
 #include "task.h"
 
 uint32_t task_counter = 0;
+struct task *task_list_head = NULL;
 
 void
 task_add_child (struct task *parent, struct task *child)
