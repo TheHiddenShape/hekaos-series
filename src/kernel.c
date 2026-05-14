@@ -9,6 +9,7 @@
 #include "paging.h"
 #include "phys_page_frame.h"
 #include "pic.h"
+#include "pit.h"
 #include "printk.h"
 #include "task.h"
 #include "trap_frame.h"
@@ -714,6 +715,7 @@ kernel_main (void)
     gdt_init ();
     pic_remap ();
     idt_init ();
+    pit_init (PIT_TICK_HZ);
     paging_init ();
     phys_mem_init ();
     phys_mem_test ();

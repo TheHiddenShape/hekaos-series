@@ -69,6 +69,9 @@ struct task
     struct task *next; /* intrusive singly-linked list for the scheduler,
                         * will become a list_head when needed */
 
+    uint32_t quantum;   /* reload value: ticks granted per scheduling round */
+    uint32_t time_left; /* ticks remaining in the current quantum */
+
     int32_t exit_code; /* set on TASK_ZOMBIE, collected by parent via wait() */
 
     uint32_t uid;  /* real user id: owner of this process */

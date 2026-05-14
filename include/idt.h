@@ -50,6 +50,7 @@ extern void isr66 (void);  /* trap frame test (0x42) */
 extern void isr128 (void); /* syscall (int 0x80) */
 
 /* hardware interrupts (IRQs) */
+extern void irq0 (void); /* PIT timer (IRQ 0) */
 extern void irq1 (void); /* keyboard (IRQ 1) */
 
 void idt_init (void);

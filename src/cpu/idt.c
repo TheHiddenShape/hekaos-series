@@ -49,6 +49,7 @@ idt_init (void)
     idt_set_gate (17, (uint32_t)isr17, 0x08, 0x8E);
     idt_set_gate (18, (uint32_t)isr18, 0x08, 0x8E);
     idt_set_gate (19, (uint32_t)isr19, 0x08, 0x8E);
+    idt_set_gate (32, (uint32_t)irq0, 0x08, 0x8E);
     idt_set_gate (33, (uint32_t)irq1, 0x08, 0x8E);
     idt_set_gate (66, (uint32_t)isr66, 0x08, 0x8E);
     idt_set_gate (0x80, (uint32_t)isr128, 0x08, 0xEF); /* trap gate, DPL=3 */

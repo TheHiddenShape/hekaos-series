@@ -174,7 +174,7 @@ free_page (void *virtualaddr)
     phys_free_frame (phys);
 }
 
-void uint32_t
+uint32_t
 paging_proc_init (uint32_t pid)
 {
     uint32_t i;

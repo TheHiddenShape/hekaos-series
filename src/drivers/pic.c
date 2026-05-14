@@ -52,8 +52,8 @@ pic_remap (void)
     outb (PIC2_DATA, ICW4_8086);
     io_wait ();
 
-    /* mask all interrupts except IRQ1 (keyboard) */
-    outb (PIC1_DATA, 0xFD);
+    /* mask all interrupts except IRQ0 (PIT) and IRQ1 (keyboard) */
+    outb (PIC1_DATA, 0xFC);
     outb (PIC2_DATA, 0xFF); /* mask all slave PIC interrupts */
 
     /* end of sequence */

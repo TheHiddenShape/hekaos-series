@@ -47,6 +47,7 @@ irq\num:
     jmp irq_common_stub
 .endm
 
+IRQ 0, 32
 IRQ 1, 33
 
 isr_common_stub:

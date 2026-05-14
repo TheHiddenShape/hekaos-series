@@ -1,7 +1,7 @@
-#include "task.h"
 #include "klib.h"
 #include "kmalloc.h"
 #include "paging.h"
+#include "sched.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -19,6 +19,8 @@ struct task init_task = {
     .pid = 0,
     .uid = 0,
     .euid = 0,
+    .quantum = PROC_QUANTUM,
+    .time_left = PROC_QUANTUM,
 };
 
 void
@@ -107,6 +109,8 @@ exec_fn (uint32_t *addr, uint32_t *function, uint32_t size)
 
     t->uid = current_task->uid;
     t->euid = current_task->euid;
+    t->quantum = PROC_QUANTUM;
+    t->time_left = PROC_QUANTUM;
     t->kstack = (void *)kstack_va;
     t->thread.tf = tf;
     t->thread.esp = kstack_top;

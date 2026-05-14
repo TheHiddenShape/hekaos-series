@@ -41,13 +41,13 @@ CPU_OBJS = $(OBJ_DIR)/gdt.o $(OBJ_DIR)/gdt_flush.o $(OBJ_DIR)/idt.o $(OBJ_DIR)/i
            $(OBJ_DIR)/trap_frame.o $(OBJ_DIR)/trap_frame_stubs.o \
            $(OBJ_DIR)/syscall.o
 
-DRIVERS_OBJS = $(OBJ_DIR)/io.o $(OBJ_DIR)/pic.o $(OBJ_DIR)/vga.o
+DRIVERS_OBJS = $(OBJ_DIR)/io.o $(OBJ_DIR)/pic.o $(OBJ_DIR)/pit.o $(OBJ_DIR)/vga.o
 
 MEMORY_OBJS = $(OBJ_DIR)/phys_page_frame.o $(OBJ_DIR)/kmem_dyn_alloc.o $(OBJ_DIR)/kmalloc.o $(OBJ_DIR)/vmalloc.o
 
 KLIB_OBJS = $(OBJ_DIR)/string.o $(OBJ_DIR)/printk.o $(OBJ_DIR)/kpanic.o
 
-KERNEL_OBJS = $(OBJ_DIR)/kernel.o $(OBJ_DIR)/signal.o $(OBJ_DIR)/task.o $(OBJ_DIR)/proc_test.o
+KERNEL_OBJS = $(OBJ_DIR)/kernel.o $(OBJ_DIR)/signal.o $(OBJ_DIR)/task.o $(OBJ_DIR)/proc_test.o $(OBJ_DIR)/sched.o
 
 OBJS = $(BOOT_OBJS) $(CPU_OBJS) $(MEMORY_OBJS) $(DRIVERS_OBJS) $(KLIB_OBJS) $(KERNEL_OBJS)
 
