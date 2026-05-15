@@ -80,6 +80,7 @@ exec_fn (uint32_t *addr, uint32_t *function, uint32_t size)
         return;
     }
     memset (t, 0, sizeof (struct task));
+    t->state = TASK_BLOCKED;
 
     t->pid = ++task_counter;
 
