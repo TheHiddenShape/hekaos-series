@@ -89,6 +89,7 @@ extern uint32_t task_counter;
 extern struct task *task_list_head;
 extern struct task *current_task;
 extern struct task init_task;
+extern struct task kthreadd_task; /* PID 2: sentinel parent of all kthreads */
 
 void task_init (void);
 

@@ -25,6 +25,18 @@ struct task init_task = {
     .time_left = PROC_QUANTUM,
 };
 
+/* PID 2: sentinel parent of kthreads. Never enters task_list_head, never
+ * scheduled; state is set defensively but never read. PID 1 left unused, to be
+ * claimed by Ring 3 init when userland lands. */
+struct task kthreadd_task = {
+    .state = TASK_BLOCKED,
+    .pid = 2,
+    .uid = 0,
+    .euid = 0,
+    .quantum = PROC_QUANTUM,
+    .time_left = PROC_QUANTUM,
+};
+
 void
 task_init (void)
 {
@@ -33,6 +45,11 @@ task_init (void)
     /* inherit the currently loaded kernel pgdir so the asm switch can safely
      * reload CR3 when other tasks switch back to init_task */
     init_task.mm.pgdir = read_cr3 ();
+
+    /* graft kthreadd under init in the genealogy tree; first task_create will
+     * therefore allocate PID 3 (PID 1 stays reserved for future Ring 3 init) */
+    task_add_child (&init_task, &kthreadd_task);
+    task_counter = 2;
 }
 
 void
@@ -124,9 +141,11 @@ exec_fn (uint32_t *addr, uint32_t *function, uint32_t size)
     t->mm.code_end = (uint32_t)addr + size;
     /* top of userland VA space; grows downward from KERNEL_VIRT_BASE */
     t->mm.stack_top = KERNEL_VIRT_BASE - PAGE_SIZE;
-    t->parent = current_task;
+    /* kthreads always descend from kthreadd, regardless of who invoked
+     * exec_fn; fork() preserves the forker as parent (handled in task_fork) */
+    t->parent = &kthreadd_task;
 
-    task_add_child (current_task, t);
+    task_add_child (&kthreadd_task, t);
 
     t->next = task_list_head;
     task_list_head = t;
