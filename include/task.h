@@ -94,6 +94,14 @@ void task_init (void);
 
 void exec_fn (uint32_t *addr, uint32_t *function, uint32_t size);
 
+/* duplicate current_task. Returns child pid (parent), 0 (child), -1 (fail).
+ * frame is the syscall trap frame, cloned onto the child kstack with eax=0. */
+int32_t task_fork (struct trap_frame *frame);
+
+/* tear down a TASK_ZOMBIE: kstack, user pgdir, tree links, task struct.
+ * CR3 must not be zombie's pgdir. */
+void task_reap (struct task *zombie);
+
 /* n-ary tree helpers */
 void task_add_child (struct task *parent, struct task *child);
 void task_remove_child (struct task *parent, struct task *child);

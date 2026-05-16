@@ -1,4 +1,5 @@
 #include "proc_test.h"
+#include "syscall.h"
 #include <stdint.h>
 
 /*
@@ -131,5 +132,38 @@ pid6_fn (void)
 
 __attribute__ ((noinline)) void
 pid6_fn_end (void)
+{
+}
+
+/* fork driver: .rodata strings work in both pgdirs because pd[0] is shared */
+__attribute__ ((noinline)) void
+forker_fn (void)
+{
+    static const char msg_parent[] = "fork: parent\n";
+    static const char msg_child[] = "fork: child\n";
+    static const char msg_fail[] = "fork: failed\n";
+
+    int32_t pid = trigger_syscall (SYS_FORK, 0, 0, 0);
+    if (pid == 0)
+    {
+        trigger_syscall (SYS_WRITE, 1, (uint32_t)msg_child,
+                         sizeof (msg_child) - 1);
+    }
+    else if (pid > 0)
+    {
+        trigger_syscall (SYS_WRITE, 1, (uint32_t)msg_parent,
+                         sizeof (msg_parent) - 1);
+        trigger_syscall (SYS_WAITPID, 0, 0, 0);
+    }
+    else
+    {
+        trigger_syscall (SYS_WRITE, 1, (uint32_t)msg_fail,
+                         sizeof (msg_fail) - 1);
+    }
+    trigger_syscall (SYS_EXIT, 0, 0, 0);
+}
+
+__attribute__ ((noinline)) void
+forker_fn_end (void)
 {
 }

@@ -36,6 +36,14 @@ void unmap_page (void *virtualaddr);
 void *alloc_page (void *virtualaddr, uint32_t flags);
 void free_page (void *virtualaddr);
 
+/* deep-copy parent's user-space (PDE 1..767) into page_directories[child_pid].
+ * Pre: CR3=parent pgdir, paging_proc_init(child_pid) done. -1 on OOM. */
+int paging_fork_copy (uint32_t child_pid);
+
+/* free every user PT + PTE-pointed frame of pid. CR3 must not be pid's pgdir.
+ */
+void paging_proc_teardown (uint32_t pid);
+
 void paging_test (void);
 
 #endif

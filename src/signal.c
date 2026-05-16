@@ -65,6 +65,13 @@ kernel_signal_send (struct task *t, int signum)
     }
 
     t->pending_signals |= SIGMASK (signum);
+
+    /* wake a BLOCKED waiter (wait, future sleep) so the scheduler can dispatch
+     */
+    if (t->state == TASK_BLOCKED)
+    {
+        t->state = TASK_RUNNABLE;
+    }
 }
 
 void

@@ -2,6 +2,8 @@
 #include "kmalloc.h"
 #include "paging.h"
 #include "sched.h"
+#include "signal.h"
+#include "trap_frame.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -80,7 +82,6 @@ exec_fn (uint32_t *addr, uint32_t *function, uint32_t size)
         return;
     }
     memset (t, 0, sizeof (struct task));
-    t->state = TASK_BLOCKED;
 
     t->pid = ++task_counter;
 
@@ -149,4 +150,139 @@ task_reparent (struct task *task, struct task *new_parent)
         task_remove_child (task->parent, task);
     }
     task_add_child (new_parent, task);
+}
+
+int32_t
+task_fork (struct trap_frame *frame)
+{
+    if (task_counter >= MAX_PROC - 1 || current_task->kstack == NULL)
+    {
+        return -1;
+    }
+
+    struct task *child = kmalloc (sizeof (struct task));
+    if (!child)
+    {
+        return -1;
+    }
+    memset (child, 0, sizeof (struct task));
+
+    child->pid = ++task_counter;
+
+    /* allocate in parent's pgdir; the kstack PT is shared via paging_proc_init
+     */
+    uint32_t kstack_va = KSTACK_VA_BASE + child->pid * KSTACK_PAGES * PAGE_SIZE;
+    for (uint32_t p = 0; p < KSTACK_PAGES; p++)
+    {
+        void *va = (void *)(kstack_va + p * PAGE_SIZE);
+        if (!alloc_page (va, PAGE_PRESENT | PAGE_RW))
+        {
+            for (uint32_t f = 0; f < p; f++)
+            {
+                free_page ((void *)(kstack_va + f * PAGE_SIZE));
+            }
+            kfree (child);
+            --task_counter;
+            return -1;
+        }
+    }
+    uint32_t kstack_top = kstack_va + KSTACK_PAGES * PAGE_SIZE;
+
+    child->mm.pgdir = paging_proc_init (child->pid);
+    if (paging_fork_copy (child->pid) != 0)
+    {
+        for (uint32_t f = 0; f < KSTACK_PAGES; f++)
+        {
+            free_page ((void *)(kstack_va + f * PAGE_SIZE));
+        }
+        kfree (child);
+        --task_counter;
+        return -1;
+    }
+
+    /* copy kstack byte-for-byte: tf + call chain land at the same offset */
+    uint32_t parent_kstack_va = (uint32_t)current_task->kstack;
+    uint8_t *src = (uint8_t *)parent_kstack_va;
+    uint8_t *dst = (uint8_t *)kstack_va;
+    for (uint32_t b = 0; b < KSTACK_PAGES * PAGE_SIZE; b++)
+    {
+        dst[b] = src[b];
+    }
+
+    uint32_t parent_kstack_top = parent_kstack_va + KSTACK_PAGES * PAGE_SIZE;
+    uint32_t frame_offset = parent_kstack_top - (uint32_t)frame;
+    struct trap_frame *child_tf
+        = (struct trap_frame *)(kstack_top - frame_offset);
+    /* fork() returns 0 in the child; parent's return is written by
+     * syscall_dispatch */
+    child_tf->eax = 0;
+
+    child->state = TASK_RUNNABLE;
+    child->thread.tf = child_tf;
+    child->thread.esp = (uint32_t)child_tf;
+    child->kstack = (void *)kstack_va;
+    child->parent = current_task;
+    child->uid = current_task->uid;
+    child->euid = current_task->euid;
+    child->quantum = current_task->quantum;
+    child->time_left = current_task->quantum;
+
+    child->mm.code_start = current_task->mm.code_start;
+    child->mm.code_end = current_task->mm.code_end;
+    child->mm.data_start = current_task->mm.data_start;
+    child->mm.data_end = current_task->mm.data_end;
+    child->mm.stack_top = current_task->mm.stack_top;
+    child->mm.heap_brk = current_task->mm.heap_brk;
+
+    for (int s = 0; s < NSIG; s++)
+    {
+        child->signal_handlers[s] = current_task->signal_handlers[s];
+    }
+    /* pending_signals stays zero per POSIX fork(2) */
+
+    task_add_child (current_task, child);
+    child->next = task_list_head;
+    task_list_head = child;
+
+    return (int32_t)child->pid;
+}
+
+void
+task_reap (struct task *zombie)
+{
+    if (zombie->parent != NULL)
+    {
+        task_remove_child (zombie->parent, zombie);
+    }
+
+    /* unlink from the scheduler list */
+    if (task_list_head == zombie)
+    {
+        task_list_head = zombie->next;
+    }
+    else
+    {
+        struct task *prev = task_list_head;
+        while (prev != NULL && prev->next != zombie)
+        {
+            prev = prev->next;
+        }
+        if (prev != NULL)
+        {
+            prev->next = zombie->next;
+        }
+    }
+
+    if (zombie->kstack != NULL)
+    {
+        uint32_t base = (uint32_t)zombie->kstack;
+        for (uint32_t p = 0; p < KSTACK_PAGES; p++)
+        {
+            free_page ((void *)(base + p * PAGE_SIZE));
+        }
+    }
+
+    paging_proc_teardown (zombie->pid);
+
+    kfree (zombie);
 }

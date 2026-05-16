@@ -1,5 +1,6 @@
 #include "sched.h"
 #include "printk.h"
+#include "signal.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -118,6 +119,13 @@ pick_next_task (void)
 void
 schedule (void)
 {
+    /* drain pending signals first: default action may flip state to ZOMBIE,
+     * which the check below must observe to force an immediate switch */
+    if (current_task->pending_signals)
+    {
+        kernel_signal_dispatch (current_task);
+    }
+
     /* if current_task is no longer RUNNING (got marked BLOCKED/ZOMBIE between
      * ticks), force a switch now instead of letting it burn the rest of its
      * quantum; the on-CPU task must always be in state RUNNING */

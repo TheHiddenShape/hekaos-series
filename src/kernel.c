@@ -12,6 +12,7 @@
 #include "pit.h"
 #include "printk.h"
 #include "proc_test.h"
+#include "signal.h"
 #include "task.h"
 #include "trap_frame.h"
 #include "vga.h"
@@ -358,6 +359,10 @@ ep_render (int page, struct task **procs, int nprocs, int total_pages)
 static uint8_t proc_code_buf[MAX_TEST_PROCS][PAGE_SIZE]
     __attribute__ ((aligned (PAGE_SIZE)));
 
+/* dedicated buffer for the fork driver, separate from the numbered spawn slots
+ */
+static uint8_t forker_code_buf[PAGE_SIZE] __attribute__ ((aligned (PAGE_SIZE)));
+
 void
 shell_spawnproc (int slot)
 {
@@ -476,6 +481,123 @@ shell_eyeproc (void)
     terminal_initialize ();
     shell_print_prompt ();
     enable_interrupts ();
+}
+
+/* returns len(prefix) if cmd starts with prefix, else 0 */
+static size_t
+shell_starts_with (const char *cmd, const char *prefix)
+{
+    size_t i = 0;
+    while (prefix[i] != '\0')
+    {
+        if (cmd[i] != prefix[i])
+        {
+            return 0;
+        }
+        i++;
+    }
+    return i;
+}
+
+/* parse base-10 uint at *p, advance past digits; 1 on success, 0 if no digit */
+static int
+shell_parse_uint (const char **p, uint32_t *out)
+{
+    const char *s = *p;
+    if (*s < '0' || *s > '9')
+    {
+        return 0;
+    }
+    uint32_t v = 0;
+    while (*s >= '0' && *s <= '9')
+    {
+        v = v * 10 + (uint32_t)(*s - '0');
+        s++;
+    }
+    *p = s;
+    *out = v;
+    return 1;
+}
+
+static void
+shell_skip_spaces (const char **p)
+{
+    while (**p == ' ')
+    {
+        (*p)++;
+    }
+}
+
+static struct task *
+shell_find_task (uint32_t pid)
+{
+    for (struct task *t = task_list_head; t != NULL; t = t->next)
+    {
+        if (t->pid == pid)
+        {
+            return t;
+        }
+    }
+    return NULL;
+}
+
+/* debug handler installed by the `signal` command — logs on delivery */
+static void
+shell_debug_sig_handler (int signo)
+{
+    pr_info ("signal handler fired: sig=%d pid=%u\n", signo, current_task->pid);
+}
+
+/* shell-side kill: bypasses int $0x80 (shell runs as init in ring 0) */
+static void
+shell_kill (uint32_t pid, int signum)
+{
+    if (signum <= 0 || signum >= NSIG)
+    {
+        terminal_writestring ("kill: invalid signal\n");
+        return;
+    }
+    struct task *t = shell_find_task (pid);
+    if (!t)
+    {
+        terminal_writestring ("kill: pid not found\n");
+        return;
+    }
+    kernel_signal_send (t, signum);
+    pr_info ("kill: sent sig %d to pid %u\n", signum, pid);
+}
+
+/* installs shell_debug_sig_handler on pid for signum, for hand-testing kill */
+static void
+shell_signal (uint32_t pid, int signum)
+{
+    if (signum <= 0 || signum >= NSIG)
+    {
+        terminal_writestring ("signal: invalid signal\n");
+        return;
+    }
+    struct task *t = shell_find_task (pid);
+    if (!t)
+    {
+        terminal_writestring ("signal: pid not found\n");
+        return;
+    }
+    kernel_signal_register (t, signum, shell_debug_sig_handler);
+    pr_info ("signal: installed debug handler for sig %d on pid %u\n", signum,
+             pid);
+}
+
+static void
+shell_forktest (void)
+{
+    uint32_t size = (uint32_t)forker_fn_end - (uint32_t)forker_fn;
+    if (size == 0 || size > PAGE_SIZE)
+    {
+        terminal_writestring ("forktest: invalid function size\n");
+        return;
+    }
+    exec_fn ((uint32_t *)forker_code_buf, (uint32_t *)forker_fn, size);
+    terminal_writestring ("forktest: launched\n");
 }
 
 #define CMD_BUFFER_SIZE 256
@@ -615,6 +737,11 @@ shell_help (void)
         "  eyeproc  - full-screen process grid (ESC to quit)\n");
     terminal_writestring (
         "  spawnproc [N] - launch test process N (1..6), or all if omitted\n");
+    terminal_writestring (
+        "  forktest - run a fork+wait+exit demo via int 0x80\n");
+    terminal_writestring ("  kill <pid> <sig>   - send signal sig to pid\n");
+    terminal_writestring (
+        "  signal <pid> <sig> - install a debug handler on pid for sig\n");
 }
 
 void
@@ -678,6 +805,54 @@ shell_execute (const char *cmd)
              && cmd[10] <= '9' && cmd[11] == '\0')
     {
         shell_spawnproc (cmd[10] - '0');
+    }
+    else if (strcmp (cmd, "forktest") == 0)
+    {
+        shell_forktest ();
+    }
+    else if (shell_starts_with (cmd, "kill ") > 0)
+    {
+        const char *p = cmd + 5;
+        shell_skip_spaces (&p);
+        uint32_t pid = 0, sig = 0;
+        if (!shell_parse_uint (&p, &pid))
+        {
+            terminal_writestring ("kill: usage: kill <pid> <sig>\n");
+        }
+        else
+        {
+            shell_skip_spaces (&p);
+            if (!shell_parse_uint (&p, &sig))
+            {
+                terminal_writestring ("kill: usage: kill <pid> <sig>\n");
+            }
+            else
+            {
+                shell_kill (pid, (int)sig);
+            }
+        }
+    }
+    else if (shell_starts_with (cmd, "signal ") > 0)
+    {
+        const char *p = cmd + 7;
+        shell_skip_spaces (&p);
+        uint32_t pid = 0, sig = 0;
+        if (!shell_parse_uint (&p, &pid))
+        {
+            terminal_writestring ("signal: usage: signal <pid> <sig>\n");
+        }
+        else
+        {
+            shell_skip_spaces (&p);
+            if (!shell_parse_uint (&p, &sig))
+            {
+                terminal_writestring ("signal: usage: signal <pid> <sig>\n");
+            }
+            else
+            {
+                shell_signal (pid, (int)sig);
+            }
+        }
     }
     else if (cmd[0] != '\0')
     {

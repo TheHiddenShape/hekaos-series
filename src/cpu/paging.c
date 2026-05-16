@@ -206,6 +206,118 @@ paging_proc_switch (uint32_t pid)
     load_page_directory ((uint32_t *)page_directories[pid]);
 }
 
+/* scratch VAs in the kstack PDE (956), past every per-pid kstack slot. Used
+ * transiently by fork/teardown to walk a non-current pgdir's PT contents. */
+#define FORK_SCRATCH_PT_VA 0xEF200000u
+#define FORK_SCRATCH_DATA_VA 0xEF201000u
+#define KSTACK_PDE_INDEX (0xEF000000u >> 22)
+
+int
+paging_fork_copy (uint32_t child_pid)
+{
+    uint32_t *parent_pd = (uint32_t *)RECURSIVE_PD_BASE;
+    uint32_t *child_pd = page_directories[child_pid];
+
+    /* re-sync the kstack PDE from the live parent (defensive vs. pd0 snapshot)
+     */
+    child_pd[KSTACK_PDE_INDEX] = parent_pd[KSTACK_PDE_INDEX];
+
+    /* user-space deep copy: PDE 1..767 (0=identity, 768..1022=kernel,
+     * 1023=recursive) */
+    for (uint32_t pdi = 1; pdi < 768; pdi++)
+    {
+        uint32_t parent_pde = parent_pd[pdi];
+        if (!(parent_pde & PAGE_PRESENT))
+        {
+            continue;
+        }
+
+        void *child_pt_phys = phys_alloc_frame ();
+        if (!child_pt_phys)
+        {
+            return -1;
+        }
+
+        map_page (child_pt_phys, (void *)FORK_SCRATCH_PT_VA,
+                  PAGE_PRESENT | PAGE_RW);
+        uint32_t *child_pt = (uint32_t *)FORK_SCRATCH_PT_VA;
+        for (uint32_t i = 0; i < PT_ENTRIES; i++)
+        {
+            child_pt[i] = 0;
+        }
+
+        child_pd[pdi] = ((uint32_t)child_pt_phys) | (parent_pde & 0xFFF);
+
+        uint32_t *parent_pt = get_pt (pdi);
+        for (uint32_t pti = 0; pti < PT_ENTRIES; pti++)
+        {
+            uint32_t parent_pte = parent_pt[pti];
+            if (!(parent_pte & PAGE_PRESENT))
+            {
+                continue;
+            }
+
+            void *child_frame = phys_alloc_frame ();
+            if (!child_frame)
+            {
+                unmap_page ((void *)FORK_SCRATCH_PT_VA);
+                return -1;
+            }
+
+            map_page (child_frame, (void *)FORK_SCRATCH_DATA_VA,
+                      PAGE_PRESENT | PAGE_RW);
+            uint32_t src_va = (pdi << 22) | (pti << 12);
+            uint8_t *src = (uint8_t *)src_va;
+            uint8_t *dst = (uint8_t *)FORK_SCRATCH_DATA_VA;
+            for (uint32_t b = 0; b < PAGE_SIZE; b++)
+            {
+                dst[b] = src[b];
+            }
+
+            child_pt[pti] = ((uint32_t)child_frame) | (parent_pte & 0xFFF);
+        }
+    }
+
+    unmap_page ((void *)FORK_SCRATCH_PT_VA);
+    unmap_page ((void *)FORK_SCRATCH_DATA_VA);
+    return 0;
+}
+
+void
+paging_proc_teardown (uint32_t pid)
+{
+    uint32_t *target_pd = page_directories[pid];
+
+    for (uint32_t pdi = 1; pdi < 768; pdi++)
+    {
+        uint32_t pde = target_pd[pdi];
+        if (!(pde & PAGE_PRESENT))
+        {
+            continue;
+        }
+
+        uint32_t pt_phys = pde & ~0xFFFu;
+
+        /* expose the dead task's PT in the current pgdir to walk it */
+        map_page ((void *)pt_phys, (void *)FORK_SCRATCH_PT_VA,
+                  PAGE_PRESENT | PAGE_RW);
+        uint32_t *pt = (uint32_t *)FORK_SCRATCH_PT_VA;
+        for (uint32_t pti = 0; pti < PT_ENTRIES; pti++)
+        {
+            uint32_t pte = pt[pti];
+            if (!(pte & PAGE_PRESENT))
+            {
+                continue;
+            }
+            phys_free_frame ((void *)(pte & ~0xFFFu));
+        }
+        unmap_page ((void *)FORK_SCRATCH_PT_VA);
+
+        phys_free_frame ((void *)pt_phys);
+        target_pd[pdi] = PAGE_RW;
+    }
+}
+
 void
 paging_test (void)
 {

@@ -17,4 +17,8 @@ void pid4_fn_end (void);
 void pid5_fn_end (void);
 void pid6_fn_end (void);
 
+/* fork/wait/exit demo driver via int $0x80 */
+void forker_fn (void);
+void forker_fn_end (void);
+
 #endif
