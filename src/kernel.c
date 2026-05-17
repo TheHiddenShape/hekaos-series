@@ -813,6 +813,7 @@ shell_help (void)
 {
     terminal_writestring ("available commands:\n");
     terminal_writestring ("  help     - show this help message\n");
+    terminal_writestring ("  clear    - clear the terminal screen\n");
     terminal_writestring ("  momentum - dump current task execution context\n");
     terminal_writestring ("  dmesg    - display kernel ring buffer\n");
     terminal_writestring ("  memdump  - display memory usage summary\n");
@@ -851,6 +852,10 @@ shell_execute (const char *cmd)
     else if (strcmp (cmd, "help") == 0)
     {
         shell_help ();
+    }
+    else if (strcmp (cmd, "clear") == 0)
+    {
+        terminal_initialize ();
     }
     else if (strcmp (cmd, "momentum") == 0)
     {
