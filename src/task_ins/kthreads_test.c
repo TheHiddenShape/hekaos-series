@@ -1,4 +1,4 @@
-#include "proc_test.h"
+#include "kthreads_test.h"
 #include "syscall.h"
 #include <stdint.h>
 
@@ -13,9 +13,9 @@
  * - volatile counters prevent dead-store elimination.
  */
 
-/* pid 1 — init: future zombie reaper; for now a simple heartbeat counter */
+/* heartbeat: a simple counter loop */
 __attribute__ ((noinline)) void
-pid1_fn (void)
+kth_heartbeat_fn (void)
 {
     volatile uint32_t tick = 0;
     while (1)
@@ -25,13 +25,13 @@ pid1_fn (void)
 }
 
 __attribute__ ((noinline)) void
-pid1_fn_end (void)
+kth_heartbeat_fn_end (void)
 {
 }
 
-/* pid 2 — busy compute: tight arithmetic loop, high CPU pressure */
+/* compute: tight arithmetic loop, high CPU pressure */
 __attribute__ ((noinline)) void
-pid2_fn (void)
+kth_compute_fn (void)
 {
     volatile uint32_t a = 1;
     volatile uint32_t b = 1;
@@ -50,13 +50,13 @@ pid2_fn (void)
 }
 
 __attribute__ ((noinline)) void
-pid2_fn_end (void)
+kth_compute_fn_end (void)
 {
 }
 
-/* pid 3 — memory writer: sequential writes to a local buffer */
+/* memwrite: sequential writes to a local buffer */
 __attribute__ ((noinline)) void
-pid3_fn (void)
+kth_memwrite_fn (void)
 {
     volatile uint8_t buf[64];
     volatile uint32_t i = 0;
@@ -68,13 +68,13 @@ pid3_fn (void)
 }
 
 __attribute__ ((noinline)) void
-pid3_fn_end (void)
+kth_memwrite_fn_end (void)
 {
 }
 
-/* pid 4 — memory reader: alternating read/write, cache pressure */
+/* memread: alternating read/write, cache pressure */
 __attribute__ ((noinline)) void
-pid4_fn (void)
+kth_memread_fn (void)
 {
     volatile uint32_t buf[16];
     volatile uint32_t sum = 0;
@@ -93,14 +93,14 @@ pid4_fn (void)
 }
 
 __attribute__ ((noinline)) void
-pid4_fn_end (void)
+kth_memread_fn_end (void)
 {
 }
 
-/* pid 5 — slow counter: increments at a coarser granularity; useful to
- * observe a process that does less work per quantum */
+/* slow: increments at a coarser granularity; useful to observe a process that
+ * does less work per quantum */
 __attribute__ ((noinline)) void
-pid5_fn (void)
+kth_slow_fn (void)
 {
     volatile uint32_t tick = 0;
     while (1)
@@ -115,13 +115,13 @@ pid5_fn (void)
 }
 
 __attribute__ ((noinline)) void
-pid5_fn_end (void)
+kth_slow_fn_end (void)
 {
 }
 
-/* pid 6 — idle probe: near-empty loop; models a low-priority background task */
+/* idle: near-empty loop; models a low-priority background task */
 __attribute__ ((noinline)) void
-pid6_fn (void)
+kth_idle_fn (void)
 {
     volatile uint32_t idle = 0;
     while (1)
@@ -131,7 +131,7 @@ pid6_fn (void)
 }
 
 __attribute__ ((noinline)) void
-pid6_fn_end (void)
+kth_idle_fn_end (void)
 {
 }
 

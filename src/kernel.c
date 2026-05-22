@@ -6,12 +6,12 @@
 #include "klib.h"
 #include "kmalloc.h"
 #include "kmem_dyn_alloc.h"
+#include "kthreads_test.h"
 #include "paging.h"
 #include "phys_page_frame.h"
 #include "pic.h"
 #include "pit.h"
 #include "printk.h"
-#include "proc_test.h"
 #include "signal.h"
 #include "task.h"
 #include "trap_frame.h"
@@ -377,28 +377,28 @@ shell_spawnproc (int slot)
     switch (slot)
     {
         case 1:
-            fn = pid1_fn;
-            fn_end = pid1_fn_end;
+            fn = kth_heartbeat_fn;
+            fn_end = kth_heartbeat_fn_end;
             break;
         case 2:
-            fn = pid2_fn;
-            fn_end = pid2_fn_end;
+            fn = kth_compute_fn;
+            fn_end = kth_compute_fn_end;
             break;
         case 3:
-            fn = pid3_fn;
-            fn_end = pid3_fn_end;
+            fn = kth_memwrite_fn;
+            fn_end = kth_memwrite_fn_end;
             break;
         case 4:
-            fn = pid4_fn;
-            fn_end = pid4_fn_end;
+            fn = kth_memread_fn;
+            fn_end = kth_memread_fn_end;
             break;
         case 5:
-            fn = pid5_fn;
-            fn_end = pid5_fn_end;
+            fn = kth_slow_fn;
+            fn_end = kth_slow_fn_end;
             break;
         case 6:
-            fn = pid6_fn;
-            fn_end = pid6_fn_end;
+            fn = kth_idle_fn;
+            fn_end = kth_idle_fn_end;
             break;
     }
 

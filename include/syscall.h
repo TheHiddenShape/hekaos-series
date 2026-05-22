@@ -16,7 +16,7 @@
 
 void syscall_dispatch (struct trap_frame *frame);
 
-/* int $0x80 trampoline for in-kernel callers (proc_test) */
+/* int $0x80 trampoline for in-kernel callers (kthreads_test) */
 int32_t trigger_syscall (uint32_t num, uint32_t arg0, uint32_t arg1,
                          uint32_t arg2);
 
