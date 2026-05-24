@@ -18,6 +18,11 @@
 
 #define PAGE_SIZE 4096
 
+#define USER_CODE_BASE                                                         \
+    0x08048000u /* Linux i386 convention, good startpoint for future ELF       \
+                   loader */
+#define USER_STACK_TOP KERNEL_VIRT_BASE
+
 void paging_init (void);
 uint32_t paging_proc_init (uint32_t pid);
 void paging_proc_switch (uint32_t pid);
@@ -36,9 +41,8 @@ void unmap_page (void *virtualaddr);
 void *alloc_page (void *virtualaddr, uint32_t flags);
 void free_page (void *virtualaddr);
 
-/* deep-copy parent's user-space (PDE 1..767) into page_directories[child_pid].
- * Pre: CR3=parent pgdir, paging_proc_init(child_pid) done. -1 on OOM. */
 int paging_fork_copy (uint32_t child_pid);
+int paging_load_user_image (uint32_t pid, const void *src, uint32_t size);
 
 /* free every user PT + PTE-pointed frame of pid. CR3 must not be pid's pgdir.
  */

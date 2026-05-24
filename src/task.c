@@ -123,7 +123,7 @@ exec_fn (uint32_t *addr, uint32_t *function, uint32_t size)
     memset (tf, 0, sizeof (struct trap_frame));
 
     tf->eip = (uint32_t)addr;
-    tf->cs = 0x08; /* kernel code segment (Ring 0); 0x1B when userland lands */
+    tf->cs = 0x08;
     tf->eflags = 0x202; /* IF=1, reserved bit set */
     tf->ds = 0x10;
 
@@ -155,6 +155,118 @@ exec_fn (uint32_t *addr, uint32_t *function, uint32_t size)
     {
         dst[i] = src[i];
     }
+
+    t->state = TASK_RUNNABLE;
+}
+
+void
+exec_user_fn (uint32_t *function, uint32_t size, struct task *parent)
+{
+    if (size == 0 || size > PAGE_SIZE || parent == NULL
+        || parent == &kthreadd_task || task_counter >= MAX_PROC - 1)
+    {
+        return;
+    }
+
+    struct task *t = kmalloc (sizeof (struct task));
+    if (!t)
+    {
+        return;
+    }
+    memset (t, 0, sizeof (struct task));
+
+    /* First Ring 3 process claims PID 1 (reserved by task_init for the future
+     * userland init / reaper, draft §10). Subsequent ones use the normal
+     * counter. PID 1 was never counted, so taking it doesn't shift the rest. */
+    static bool pid1_claimed = false;
+    bool took_pid1 = false;
+    if (!pid1_claimed)
+    {
+        t->pid = 1;
+        pid1_claimed = true;
+        took_pid1 = true;
+    }
+    else
+    {
+        t->pid = ++task_counter;
+    }
+
+    uint32_t kstack_va = KSTACK_VA_BASE + t->pid * KSTACK_PAGES * PAGE_SIZE;
+    for (uint32_t p = 0; p < KSTACK_PAGES; p++)
+    {
+        void *va = (void *)(kstack_va + p * PAGE_SIZE);
+        if (!alloc_page (va, PAGE_PRESENT | PAGE_RW))
+        {
+            for (uint32_t f = 0; f < p; f++)
+            {
+                free_page ((void *)(kstack_va + f * PAGE_SIZE));
+            }
+            kfree (t);
+            if (took_pid1)
+            {
+                pid1_claimed = false;
+            }
+            else
+            {
+                --task_counter;
+            }
+            return;
+        }
+    }
+    uint32_t kstack_top = kstack_va + KSTACK_PAGES * PAGE_SIZE;
+
+    t->mm.pgdir = paging_proc_init (t->pid);
+    if (paging_load_user_image (t->pid, function, size) != 0)
+    {
+        for (uint32_t f = 0; f < KSTACK_PAGES; f++)
+        {
+            free_page ((void *)(kstack_va + f * PAGE_SIZE));
+        }
+        paging_proc_teardown (t->pid);
+        kfree (t);
+        if (took_pid1)
+        {
+            pid1_claimed = false;
+        }
+        else
+        {
+            --task_counter;
+        }
+        return;
+    }
+
+    kstack_top -= sizeof (struct trap_frame);
+    struct trap_frame *tf = (struct trap_frame *)kstack_top;
+    memset (tf, 0, sizeof (struct trap_frame));
+
+    /* Ring 3 startup frame: iret pops 5 words (eip, cs, eflags, user_esp,
+     * user_ss) because cs has RPL=3. ds (also restored into es/fs/gs by the
+     * stubs) is the user data selector. */
+    tf->eip = USER_CODE_BASE;
+    tf->cs = 0x23;      /* GDT entry 4 (user code), RPL=3 */
+    tf->eflags = 0x202; /* IF=1, reserved bit set */
+    tf->ds = 0x2B;      /* GDT entry 5 (user data), RPL=3 */
+    tf->user_esp = USER_STACK_TOP;
+    tf->user_ss = 0x2B;
+
+    t->uid = current_task->uid;
+    t->euid = current_task->euid;
+    t->quantum = PROC_QUANTUM;
+    t->time_left = PROC_QUANTUM;
+    t->kstack = (void *)kstack_va;
+    t->thread.tf = tf;
+    t->thread.esp = kstack_top;
+    t->is_userspace = true; /* tells sched.c to update TSS.esp0 on switch-in */
+
+    t->mm.code_start = USER_CODE_BASE;
+    t->mm.code_end = USER_CODE_BASE + size;
+    t->mm.stack_top = USER_STACK_TOP;
+
+    t->parent = parent;
+    task_add_child (parent, t);
+
+    t->next = task_list_head;
+    task_list_head = t;
 
     t->state = TASK_RUNNABLE;
 }
@@ -250,6 +362,10 @@ task_fork (struct trap_frame *frame)
     child->mm.data_end = current_task->mm.data_end;
     child->mm.stack_top = current_task->mm.stack_top;
     child->mm.heap_brk = current_task->mm.heap_brk;
+
+    /* inherit ring: a Ring 3 fork yields a Ring 3 child that needs TSS.esp0
+     * updated on switch-in (sched.c gates this on is_userspace). */
+    child->is_userspace = current_task->is_userspace;
 
     for (int s = 0; s < NSIG; s++)
     {

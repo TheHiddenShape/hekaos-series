@@ -95,7 +95,10 @@ map_page (void *physaddr, void *virtualaddr, uint32_t flags)
         {
             return;
         }
-        pd[pdindex] = ((uint32_t)new_pt) | (PAGE_PRESENT | PAGE_RW);
+        /* propagate USER from the page's flags up to the PDE: the MMU requires
+         * the U/S bit on BOTH levels for a Ring 3 access to be granted. */
+        pd[pdindex] = ((uint32_t)new_pt)
+                      | (PAGE_PRESENT | PAGE_RW | (flags & PAGE_USER));
         flush_tlb ((uint32_t)get_pt (pdindex));
         uint32_t *pt_virt = get_pt (pdindex);
         for (int i = 0; i < PT_ENTRIES; i++)
@@ -280,6 +283,100 @@ paging_fork_copy (uint32_t child_pid)
 
     unmap_page ((void *)FORK_SCRATCH_PT_VA);
     unmap_page ((void *)FORK_SCRATCH_DATA_VA);
+    return 0;
+}
+
+/* Map one PAGE_USER page at `va` in pid's pgdir, then either copy `copy_size`
+ * bytes from `src` into it (rest zeroed) or zero the whole page when src=NULL.
+ * Creates the PDE on demand with PAGE_USER propagated. Returns 0 / -1 on OOM.
+ */
+static int
+load_user_page (uint32_t pid, uint32_t va, const void *src, uint32_t copy_size)
+{
+    uint32_t *pd = page_directories[pid];
+    uint32_t pdi = va >> 22;
+    uint32_t pti = (va >> 12) & 0x3FFu;
+    uint32_t pt_phys;
+
+    if (!(pd[pdi] & PAGE_PRESENT))
+    {
+        void *new_pt = phys_alloc_frame ();
+        if (!new_pt)
+        {
+            return -1;
+        }
+        pt_phys = (uint32_t)new_pt;
+        map_page (new_pt, (void *)FORK_SCRATCH_PT_VA, PAGE_PRESENT | PAGE_RW);
+        uint32_t *pt0 = (uint32_t *)FORK_SCRATCH_PT_VA;
+        for (uint32_t i = 0; i < PT_ENTRIES; i++)
+        {
+            pt0[i] = 0;
+        }
+        unmap_page ((void *)FORK_SCRATCH_PT_VA);
+        pd[pdi] = pt_phys | (PAGE_PRESENT | PAGE_RW | PAGE_USER);
+    }
+    else
+    {
+        pt_phys = pd[pdi] & ~0xFFFu;
+    }
+
+    void *frame = phys_alloc_frame ();
+    if (!frame)
+    {
+        return -1;
+    }
+
+    map_page ((void *)pt_phys, (void *)FORK_SCRATCH_PT_VA,
+              PAGE_PRESENT | PAGE_RW);
+    uint32_t *pt = (uint32_t *)FORK_SCRATCH_PT_VA;
+    pt[pti] = ((uint32_t)frame) | (PAGE_PRESENT | PAGE_RW | PAGE_USER);
+    unmap_page ((void *)FORK_SCRATCH_PT_VA);
+
+    map_page (frame, (void *)FORK_SCRATCH_DATA_VA, PAGE_PRESENT | PAGE_RW);
+    uint8_t *dst = (uint8_t *)FORK_SCRATCH_DATA_VA;
+    if (src != NULL && copy_size > 0)
+    {
+        const uint8_t *s = (const uint8_t *)src;
+        for (uint32_t b = 0; b < copy_size; b++)
+        {
+            dst[b] = s[b];
+        }
+        for (uint32_t b = copy_size; b < PAGE_SIZE; b++)
+        {
+            dst[b] = 0;
+        }
+    }
+    else
+    {
+        for (uint32_t b = 0; b < PAGE_SIZE; b++)
+        {
+            dst[b] = 0;
+        }
+    }
+    unmap_page ((void *)FORK_SCRATCH_DATA_VA);
+
+    return 0;
+}
+
+int
+paging_load_user_image (uint32_t pid, const void *src, uint32_t size)
+{
+    if (size == 0 || size > PAGE_SIZE)
+    {
+        return -1;
+    }
+
+    if (load_user_page (pid, USER_CODE_BASE, src, size) != 0)
+    {
+        return -1;
+    }
+    /* one stack page just below KERNEL_VIRT_BASE; user_esp starts at the very
+     * top (KERNEL_VIRT_BASE), first user instruction must `sub` before any
+     * deref so it lands inside [TOP - PAGE_SIZE, TOP). */
+    if (load_user_page (pid, USER_STACK_TOP - PAGE_SIZE, NULL, 0) != 0)
+    {
+        return -1;
+    }
     return 0;
 }
 

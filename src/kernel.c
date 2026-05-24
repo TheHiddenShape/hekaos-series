@@ -16,6 +16,7 @@
 #include "task.h"
 #include "trap_frame.h"
 #include "tss.h"
+#include "uprocs_test.h"
 #include "vga.h"
 #include "vmalloc.h"
 #include <stdbool.h>
@@ -365,11 +366,11 @@ static uint8_t proc_code_buf[MAX_TEST_PROCS][PAGE_SIZE]
 static uint8_t forker_code_buf[PAGE_SIZE] __attribute__ ((aligned (PAGE_SIZE)));
 
 void
-shell_spawnproc (int slot)
+shell_spawnkthread (int slot)
 {
     if (slot < 1 || slot > MAX_TEST_PROCS)
     {
-        terminal_writestring ("spawnproc: slot must be 1..6\n");
+        terminal_writestring ("spawntsk -k: slot must be 1..6\n");
         return;
     }
 
@@ -406,12 +407,54 @@ shell_spawnproc (int slot)
     uint32_t size = (uint32_t)fn_end - (uint32_t)fn;
     if (size == 0 || size > PAGE_SIZE)
     {
-        terminal_writestring ("spawnproc: invalid function size\n");
+        terminal_writestring ("spawntsk -k: invalid function size\n");
         return;
     }
 
     exec_fn ((uint32_t *)proc_code_buf[slot - 1], (uint32_t *)fn, size);
-    terminal_writestring ("spawnproc: launched\n");
+    terminal_writestring ("spawntsk -k: launched\n");
+}
+
+#define MAX_UTEST_PROCS 3
+
+void
+shell_spawnuser (int slot)
+{
+    if (slot < 1 || slot > MAX_UTEST_PROCS)
+    {
+        terminal_writestring ("spawntsk -u: slot must be 1..3\n");
+        return;
+    }
+
+    void (*fn) (void) = NULL;
+    void (*fn_end) (void) = NULL;
+    switch (slot)
+    {
+        case 1:
+            fn = ufork_fn;
+            fn_end = ufork_fn_end;
+            break;
+        case 2:
+            fn = uid_fn;
+            fn_end = uid_fn_end;
+            break;
+        case 3:
+            fn = uspin_fn;
+            fn_end = uspin_fn_end;
+            break;
+    }
+
+    uint32_t size = (uint32_t)fn_end - (uint32_t)fn;
+    if (size == 0 || size > PAGE_SIZE)
+    {
+        terminal_writestring ("spawntsk -u: invalid function size\n");
+        return;
+    }
+
+    /* parent = init_task; kthreadd is the kthread sentinel and must not parent
+     * user processes (cf draft §10 PID invariants). */
+    exec_user_fn ((uint32_t *)fn, size, &init_task);
+    terminal_writestring ("spawntsk -u: launched\n");
 }
 
 void
@@ -827,7 +870,7 @@ shell_help (void)
     terminal_writestring (
         "  eyeproc  - full-screen process grid (ESC to quit)\n");
     terminal_writestring (
-        "  spawnproc [N] - launch test process N (1..6), or all if omitted\n");
+        "  spawntsk -k|-u [N] - run kthread/user test N (or all)\n");
     terminal_writestring (
         "  forktest - run a fork+wait+exit demo via int 0x80\n");
     terminal_writestring ("  kill <pid> <sig>   - send signal sig to pid\n");
@@ -891,19 +934,51 @@ shell_execute (const char *cmd)
         shell_eyeproc ();
         return;
     }
-    else if (strcmp (cmd, "spawnproc") == 0)
+    else if (shell_starts_with (cmd, "spawntsk ") > 0)
     {
-        for (int i = 1; i <= MAX_TEST_PROCS; i++)
+        const char *p = cmd + 9;
+        shell_skip_spaces (&p);
+        if (p[0] != '-' || (p[1] != 'k' && p[1] != 'u')
+            || (p[2] != '\0' && p[2] != ' '))
         {
-            shell_spawnproc (i);
+            terminal_writestring ("spawntsk: usage: spawntsk -k|-u [slot]\n");
         }
-    }
-    else if (cmd[0] == 's' && cmd[1] == 'p' && cmd[2] == 'a' && cmd[3] == 'w'
-             && cmd[4] == 'n' && cmd[5] == 'p' && cmd[6] == 'r' && cmd[7] == 'o'
-             && cmd[8] == 'c' && cmd[9] == ' ' && cmd[10] >= '0'
-             && cmd[10] <= '9' && cmd[11] == '\0')
-    {
-        shell_spawnproc (cmd[10] - '0');
+        else
+        {
+            char flag = p[1];
+            p += 2;
+            shell_skip_spaces (&p);
+            uint32_t slot = 0;
+            if (*p == '\0')
+            {
+                /* no slot: launch all */
+                int max = (flag == 'k') ? MAX_TEST_PROCS : MAX_UTEST_PROCS;
+                for (int i = 1; i <= max; i++)
+                {
+                    if (flag == 'k')
+                    {
+                        shell_spawnkthread (i);
+                    }
+                    else
+                    {
+                        shell_spawnuser (i);
+                    }
+                }
+            }
+            else if (!shell_parse_uint (&p, &slot))
+            {
+                terminal_writestring (
+                    "spawntsk: usage: spawntsk -k|-u [slot]\n");
+            }
+            else if (flag == 'k')
+            {
+                shell_spawnkthread ((int)slot);
+            }
+            else
+            {
+                shell_spawnuser ((int)slot);
+            }
+        }
     }
     else if (strcmp (cmd, "forktest") == 0)
     {

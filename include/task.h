@@ -105,6 +105,18 @@ void task_init (void);
 
 void exec_fn (uint32_t *addr, uint32_t *function, uint32_t size);
 
+/* Spawn a Ring 3 process: maps a USER code page at USER_CODE_BASE filled with
+ * `function`'s bytes, a USER stack just below KERNEL_VIRT_BASE, then crafts a
+ * Ring0->Ring3 startup trap_frame on its kstack (cs=0x23, ds=0x2B,
+ * user_ss=0x2B, user_esp=USER_STACK_TOP, eip=USER_CODE_BASE).
+ *
+ * The very first call claims the reserved PID 1 (future userland init reaper,
+ * cf draft §10); subsequent calls use the normal task_counter sequence.
+ *
+ * `parent` becomes the new task's parent — must NOT be &kthreadd_task (that
+ * sentinel is for kernel threads only). Pass &init_task for the bootstrap. */
+void exec_user_fn (uint32_t *function, uint32_t size, struct task *parent);
+
 /* duplicate current_task. Returns child pid (parent), 0 (child), -1 (fail).
  * frame is the syscall trap frame, cloned onto the child kstack with eax=0. */
 int32_t task_fork (struct trap_frame *frame);
