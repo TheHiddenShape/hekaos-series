@@ -1,6 +1,8 @@
 #include "sched.h"
+#include "paging.h"
 #include "printk.h"
 #include "signal.h"
+#include "tss.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -159,6 +161,11 @@ schedule (void)
         current_task->state = TASK_RUNNABLE;
     }
     next->state = TASK_RUNNING;
+
+    if (next->is_userspace)
+    {
+        tss_set_esp0 ((uint32_t)next->kstack + KSTACK_PAGES * PAGE_SIZE);
+    }
 
     next_task = next;
     need_resched = 1;

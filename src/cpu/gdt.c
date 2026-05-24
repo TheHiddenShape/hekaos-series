@@ -1,8 +1,9 @@
 #include "gdt.h"
 #include "klib.h"
 #include "printk.h"
+#include "tss.h"
 
-#define GDT_ENTRIES 7
+#define GDT_ENTRIES 8
 
 struct gdt_entry gdt[GDT_ENTRIES] __attribute__ ((section (
     ".gdt"))); /* tells the compiler: "put this variable in the .gdt section" */
@@ -54,6 +55,10 @@ gdt_init (void)
                   0xCF); /* user mode data segment */
     gdt_set_gate (6, 0x00000000, 0x000FFFFF, 0xF2,
                   0xCF); /* user mode stack segment */
+
+    /* TSS descriptor. access=0x89: present, 32-bit available TSS.
+     * gran=0x00: byte granularity (no 4K, no D/B). Selector = 7<<3 = 0x38. */
+    gdt_set_gate (7, (uint32_t)&tss, sizeof (tss) - 1, 0x89, 0x00);
 
     /* load gdt into gdtr */
     gdt_flush ((uint32_t)&gp);

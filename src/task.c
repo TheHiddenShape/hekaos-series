@@ -7,8 +7,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define KSTACK_PAGES 2
-
 /* kernel stack VA base: one slot per process, just below the vmalloc zone */
 #define KSTACK_VA_BASE 0xEF000000
 

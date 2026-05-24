@@ -15,6 +15,7 @@
 #include "signal.h"
 #include "task.h"
 #include "trap_frame.h"
+#include "tss.h"
 #include "vga.h"
 #include "vmalloc.h"
 #include <stdbool.h>
@@ -1060,6 +1061,11 @@ kernel_main (void)
     terminal_initialize ();
 
     gdt_init ();
+    /* TSS lives at GDT entry 7 (already installed by gdt_init); we now zero
+     * its body, set ss0, and load TR via ltr $0x38. From this point on the
+     * CPU has a valid kernel-stack pointer for Ring3 -> Ring0 transitions. */
+    tss_init ();
+    tss_flush ();
     pic_remap ();
     idt_init ();
     pit_init (PIT_TICK_HZ);

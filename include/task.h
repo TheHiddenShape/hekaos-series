@@ -3,8 +3,13 @@
 
 #include "signal.h"
 #include "trap_frame.h"
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/* per-task kernel stack size, in pages. Exposed so sched.c can compute
+ * kstack_top = kstack + KSTACK_PAGES * PAGE_SIZE when updating TSS.esp0. */
+#define KSTACK_PAGES 2
 
 enum task_state
 {
@@ -81,6 +86,11 @@ struct task
 
     sigset_t pending_signals;            /* bitmask of undelivered signals */
     sig_handler_t signal_handlers[NSIG]; /* per-signal handler */
+
+    /* placed after every field consumed by irq_common_stub (thread.esp at +8,
+     * mm.pgdir at +32). Adding fields here is safe; do not insert earlier. */
+    bool is_userspace; /* true iff this task ever returns to Ring 3; gates
+                        * the TSS.esp0 update in schedule() */
 };
 
 #define MAX_PROC 128
