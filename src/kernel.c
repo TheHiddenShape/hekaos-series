@@ -854,30 +854,157 @@ shell_momentum (void)
     terminal_putchar ('\n');
 }
 
+/* command category for help grouping */
+enum cmd_cat
+{
+    CMD_MAN, /* help / manual pages */
+    CMD_HW,  /* power, CPU, devices, keyboard */
+    CMD_SW,  /* tasks, processes, signals, memory, kernel logs */
+};
+
+struct shell_cmd
+{
+    const char *name;
+    enum cmd_cat cat;
+    const char *desc;
+    const char *detail; /* long-form text shown by `def` */
+};
+
+/* single source of truth for help: keep in sync with shell_execute */
+static const struct shell_cmd shell_commands[] = {
+    { "help", CMD_MAN, "show this help message",
+      "  list every command grouped by section (MAN / HW / SW),\n"
+      "  with a one-line description each.\n" },
+    { "man <cmd>", CMD_MAN, "per-command manual page (basic, in v0.5.0)",
+      "  show the manual page for <cmd>. basic version lands in v0.5.0;\n"
+      "  use 'def <cmd>' for a detailed explanation in the meantime.\n" },
+    { "def <cmd>", CMD_MAN, "explain a command in detail",
+      "  print a detailed explanation of <cmd>: usage, flags and behaviour.\n"
+      "  example: def spawntsk\n" },
+    { "reboot", CMD_HW, "reboot the system",
+      "  reset the machine via the keyboard controller (out 0x64, 0xFE);\n"
+      "  halts the CPU if the reset pulse does not take.\n" },
+    { "shutdown", CMD_HW, "power off the system (ACPI)",
+      "  power off via ACPI: write SLP_EN to the PM1a control block\n"
+      "  (QEMU 0x604, Bochs 0xB004, VirtualBox 0x4004). halts on failure.\n" },
+    { "halt", CMD_HW, "halt the CPU",
+      "  mask interrupts and park the CPU in hlt; nothing runs afterwards.\n" },
+    { "keymap qwerty|azerty", CMD_HW, "select keyboard layout",
+      "  switch the scancode-to-ASCII layout used by the keyboard driver.\n"
+      "  takes effect immediately.\n" },
+    { "traptest", CMD_HW, "trigger INT 0x42 and dump the trap frame",
+      "  raise software interrupt INT 0x42 to exercise the trap-frame\n"
+      "  save/restore path, then dump the captured frame. no side effects.\n" },
+    { "clear", CMD_SW, "clear the terminal screen",
+      "  reinitialise the terminal: blank the screen and home the cursor.\n" },
+    { "momentum", CMD_SW, "dump current task execution context",
+      "  dump the current task's execution context: pid, parent, state\n"
+      "  and live register/stack snapshot.\n" },
+    { "memdump", CMD_SW, "display memory usage summary",
+      "  summarise kernel allocators: kmalloc chunk pool (zone, pages,\n"
+      "  free objects) and vmalloc zone (used/total pages). not physical "
+      "RAM.\n" },
+    { "dmesg", CMD_SW, "display kernel ring buffer",
+      "  print the kernel log ring buffer (pr_* messages since boot).\n" },
+    { "eyeproc", CMD_SW, "full-screen process grid (ESC to quit)",
+      "  full-screen live grid of all processes; refreshes continuously.\n"
+      "  press ESC to return to the shell.\n" },
+    { "spawntsk -k|-u [N]", CMD_SW, "run kthread/user test N (or all)",
+      "  launch a test payload. -k: kernel thread (ring 0);\n"
+      "  -u: user process (ring 3, syscalls via int 0x80).\n"
+      "  [N]: 1-based slot to run a single test; omit to launch them all.\n" },
+    { "forktest", CMD_SW, "run a fork+wait+exit demo via int 0x80",
+      "  run a fork + wait + exit demo driven entirely by int 0x80\n"
+      "  syscalls, to exercise the syscall/fork path.\n" },
+    { "kill <pid> <sig>", CMD_SW, "send signal sig to pid",
+      "  send signal <sig> to process <pid> (both decimal). the default\n"
+      "  action applies unless a handler was installed (see 'def signal').\n" },
+    { "signal <pid> <sig>", CMD_SW, "install a debug handler on pid for sig",
+      "  install a debug handler on <pid> for signal <sig>, so delivery\n"
+      "  is logged instead of taking the default action. pair with kill.\n" },
+};
+
+#define SHELL_CMD_COUNT (sizeof (shell_commands) / sizeof (shell_commands[0]))
+
+/* print one category, names left-aligned to the widest entry in that group */
+static void
+shell_help_section (const char *title, enum cmd_cat cat)
+{
+    size_t width = 0;
+    for (size_t i = 0; i < SHELL_CMD_COUNT; i++)
+    {
+        if (shell_commands[i].cat == cat)
+        {
+            size_t len = strlen (shell_commands[i].name);
+            if (len > width)
+            {
+                width = len;
+            }
+        }
+    }
+
+    terminal_writestring (title);
+    for (size_t i = 0; i < SHELL_CMD_COUNT; i++)
+    {
+        if (shell_commands[i].cat != cat)
+        {
+            continue;
+        }
+        terminal_writestring ("  ");
+        terminal_writestring (shell_commands[i].name);
+        for (size_t pad = strlen (shell_commands[i].name); pad < width; pad++)
+        {
+            terminal_putchar (' ');
+        }
+        terminal_writestring (" - ");
+        terminal_writestring (shell_commands[i].desc);
+        terminal_putchar ('\n');
+    }
+}
+
 static void
 shell_help (void)
 {
-    terminal_writestring ("available commands:\n");
-    terminal_writestring ("  help     - show this help message\n");
-    terminal_writestring ("  clear    - clear the terminal screen\n");
-    terminal_writestring ("  momentum - dump current task execution context\n");
-    terminal_writestring ("  dmesg    - display kernel ring buffer\n");
-    terminal_writestring ("  memdump  - display memory usage summary\n");
-    terminal_writestring ("  reboot   - reboot the system\n");
-    terminal_writestring ("  shutdown - power off the system (ACPI)\n");
-    terminal_writestring ("  halt     - halt the CPU\n");
-    terminal_writestring (
-        "  traptest - trigger INT 0x42 and dump the trap frame\n");
-    terminal_writestring ("  keymap   - qwerty | azerty\n");
-    terminal_writestring (
-        "  eyeproc  - full-screen process grid (ESC to quit)\n");
-    terminal_writestring (
-        "  spawntsk -k|-u [N] - run kthread/user test N (or all)\n");
-    terminal_writestring (
-        "  forktest - run a fork+wait+exit demo via int 0x80\n");
-    terminal_writestring ("  kill <pid> <sig>   - send signal sig to pid\n");
-    terminal_writestring (
-        "  signal <pid> <sig> - install a debug handler on pid for sig\n");
+    terminal_writestring ("available commands:\n\n");
+    shell_help_section ("MAN:\n", CMD_MAN);
+    terminal_putchar ('\n');
+    shell_help_section ("HW:\n", CMD_HW);
+    terminal_putchar ('\n');
+    shell_help_section ("SW:\n", CMD_SW);
+}
+
+/* `def <cmd>`: detailed explanation of one command, matched on its base word */
+static void
+shell_def (const char *arg)
+{
+    shell_skip_spaces (&arg);
+    if (arg[0] == '\0')
+    {
+        terminal_writestring ("def: usage: def <command>\n");
+        return;
+    }
+
+    for (size_t i = 0; i < SHELL_CMD_COUNT; i++)
+    {
+        const char *name = shell_commands[i].name;
+        /* compare arg against the base word of name (up to first space) */
+        size_t k = 0;
+        while (name[k] != '\0' && name[k] != ' ' && arg[k] == name[k])
+        {
+            k++;
+        }
+        if ((name[k] == '\0' || name[k] == ' ') && arg[k] == '\0')
+        {
+            terminal_writestring (name);
+            terminal_putchar ('\n');
+            terminal_writestring (shell_commands[i].detail);
+            return;
+        }
+    }
+
+    terminal_writestring ("def: unknown command: ");
+    terminal_writestring (arg);
+    terminal_putchar ('\n');
 }
 
 void
@@ -898,6 +1025,19 @@ shell_execute (const char *cmd)
     else if (strcmp (cmd, "help") == 0)
     {
         shell_help ();
+    }
+    else if (strcmp (cmd, "man") == 0 || shell_starts_with (cmd, "man ") > 0)
+    {
+        terminal_writestring ("man: basic manual pages available in v0.5.0; "
+                              "use 'def <cmd>' for now\n");
+    }
+    else if (strcmp (cmd, "def") == 0)
+    {
+        shell_def ("");
+    }
+    else if (shell_starts_with (cmd, "def ") > 0)
+    {
+        shell_def (cmd + 4);
     }
     else if (strcmp (cmd, "clear") == 0)
     {
