@@ -126,6 +126,11 @@ struct task *exec_init_fn (uint32_t *function, uint32_t size);
  * frame is the syscall trap frame, cloned onto the child kstack with eax=0. */
 int32_t task_fork (struct trap_frame *frame);
 
+/* terminate t: reparent its children to init, mark ZOMBIE, notify parent via
+ * SIGCHLD. shared by sys_exit and the signal default-terminate action. code is
+ * the status later collected by wait(). */
+void do_exit (struct task *t, int32_t code);
+
 /* tear down a TASK_ZOMBIE: kstack, user pgdir, tree links, task struct.
  * CR3 must not be zombie's pgdir. */
 void task_reap (struct task *zombie);

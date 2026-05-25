@@ -312,6 +312,31 @@ task_reparent (struct task *task, struct task *new_parent)
     task_add_child (new_parent, task);
 }
 
+void
+do_exit (struct task *t, int32_t code)
+{
+    t->exit_code = code;
+
+    /* orphan live children onto init (PID 1); fall back to init_task pre-boot
+     */
+    struct task *reaper = init_proc ? init_proc : &init_task;
+    if (t->children != NULL && reaper != t)
+    {
+        kernel_signal_send (reaper, SIGCHLD);
+    }
+    while (t->children != NULL)
+    {
+        task_reparent (t->children, reaper);
+    }
+
+    t->state = TASK_ZOMBIE;
+
+    if (t->parent != NULL)
+    {
+        kernel_signal_send (t->parent, SIGCHLD);
+    }
+}
+
 int32_t
 task_fork (struct trap_frame *frame)
 {

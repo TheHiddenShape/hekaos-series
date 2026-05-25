@@ -17,27 +17,7 @@ sys_exit (uint32_t status, uint32_t unused1, uint32_t unused2)
     (void)unused1;
     (void)unused2;
 
-    current_task->exit_code = (int32_t)status;
-
-    /* live children are orphaned onto init (PID 1), which reaps them once they
-     * exit. Fall back to init_task only if init isn't up yet (early boot). */
-    struct task *reaper = init_proc ? init_proc : &init_task;
-    if (current_task->children != NULL && reaper != current_task)
-    {
-        /* wake init so its waitpid loop adopts and later collects them */
-        kernel_signal_send (reaper, SIGCHLD);
-    }
-    while (current_task->children != NULL)
-    {
-        task_reparent (current_task->children, reaper);
-    }
-
-    current_task->state = TASK_ZOMBIE;
-
-    if (current_task->parent)
-    {
-        kernel_signal_send (current_task->parent, SIGCHLD);
-    }
+    do_exit (current_task, (int32_t)status);
 
     /* sti+hlt so the timer tick can switch us out (cli+hlt would deadlock) */
     while (1)

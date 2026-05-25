@@ -25,7 +25,9 @@ sig_default_action (struct task *t, int signum)
         case SIGALRM:
         case SIGTERM:
         case SIGSTOP:
-            t->state = TASK_ZOMBIE;
+            /* 128 + signum: shell convention so wait() can tell the task was
+             * killed by signum rather than exited cleanly */
+            do_exit (t, 128 + signum);
             break;
 
         /* ignore by default */
