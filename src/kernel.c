@@ -1,5 +1,6 @@
 #include "gdt.h"
 #include "idt.h"
+#include "init_us.h"
 #include "interrupts.h"
 #include "io.h"
 #include "keyboard.h"
@@ -451,9 +452,10 @@ shell_spawnuser (int slot)
         return;
     }
 
-    /* parent = init_task; kthreadd is the kthread sentinel and must not parent
-     * user processes (cf draft §10 PID invariants). */
-    exec_user_fn ((uint32_t *)fn, size, &init_task);
+    /* parent = init_proc (PID 1): userland procs descend from init, which reaps
+     * them when they exit. kthreadd is the kthread sentinel and must never
+     * parent user processes (cf draft §10 PID invariants). */
+    exec_user_fn ((uint32_t *)fn, size, init_proc);
     terminal_writestring ("spawntsk -u: launched\n");
 }
 
@@ -1156,6 +1158,11 @@ kernel_main (void)
     vmalloc_test ();
 
     task_init ();
+
+    /* bring up PID 1 (Ring 3 init / reaper) before interrupts are enabled, so
+     * it is in the run queue and owns PID 1 before any other task spawns */
+    uint32_t init_size = (uint32_t)init_fn_end - (uint32_t)init_fn;
+    exec_init_fn ((uint32_t *)init_fn, init_size);
 
     print_banner ();
 

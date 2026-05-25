@@ -10,9 +10,15 @@
 /* kernel stack VA base: one slot per process, just below the vmalloc zone */
 #define KSTACK_VA_BASE 0xEF000000
 
+/* boot-reserved PID for the userland init / reaper (see exec_init_fn). Sits
+ * between init_task (PID 0) and kthreadd (PID 2); never handed out by
+ * pid_alloc. */
+#define INIT_PID 1
+
 uint32_t task_counter = 0;
 struct task *task_list_head = NULL;
 struct task *current_task = NULL;
+struct task *init_proc = NULL; /* PID 1: userland init / reaper */
 
 struct task init_task = {
     .state = TASK_RUNNING,
@@ -24,8 +30,8 @@ struct task init_task = {
 };
 
 /* PID 2: sentinel parent of kthreads. Never enters task_list_head, never
- * scheduled; state is set defensively but never read. PID 1 left unused, to be
- * claimed by Ring 3 init when userland lands. */
+ * scheduled; state is set defensively but never read. PID 1 is reserved for
+ * the Ring 3 init (INIT_PID), brought up at boot by exec_init_fn. */
 struct task kthreadd_task = {
     .state = TASK_BLOCKED,
     .pid = 2,
@@ -44,10 +50,30 @@ task_init (void)
      * reload CR3 when other tasks switch back to init_task */
     init_task.mm.pgdir = read_cr3 ();
 
-    /* graft kthreadd under init in the genealogy tree; first task_create will
-     * therefore allocate PID 3 (PID 1 stays reserved for future Ring 3 init) */
+    /* graft kthreadd under init in the genealogy tree; pid_alloc starts above
+     * the reserved range, so the first dynamic task gets PID 3 (PID 1 is
+     * reserved for init, PID 2 is kthreadd) */
     task_add_child (&init_task, &kthreadd_task);
     task_counter = 2;
+}
+
+/* sole authority over task_counter. PIDs 0/1/2 are boot-reserved (init_task,
+ * init, kthreadd); every dynamic task gets its PID from here. Returns -1 when
+ * the table is full. pid_release rolls a claim back on a failed spawn. */
+static int32_t
+pid_alloc (void)
+{
+    if (task_counter >= MAX_PROC - 1)
+    {
+        return -1;
+    }
+    return (int32_t)++task_counter;
+}
+
+static void
+pid_release (void)
+{
+    --task_counter;
 }
 
 void
@@ -86,7 +112,13 @@ task_remove_child (struct task *parent, struct task *child)
 void
 exec_fn (uint32_t *addr, uint32_t *function, uint32_t size)
 {
-    if (size == 0 || task_counter >= MAX_PROC - 1)
+    if (size == 0)
+    {
+        return;
+    }
+
+    int32_t pid = pid_alloc ();
+    if (pid < 0)
     {
         return;
     }
@@ -94,11 +126,12 @@ exec_fn (uint32_t *addr, uint32_t *function, uint32_t size)
     struct task *t = kmalloc (sizeof (struct task));
     if (!t)
     {
+        pid_release ();
         return;
     }
     memset (t, 0, sizeof (struct task));
 
-    t->pid = ++task_counter;
+    t->pid = (uint32_t)pid;
 
     /* one slot of KSTACK_PAGES per pid in the dedicated VA zone */
     uint32_t kstack_va = KSTACK_VA_BASE + t->pid * KSTACK_PAGES * PAGE_SIZE;
@@ -112,7 +145,7 @@ exec_fn (uint32_t *addr, uint32_t *function, uint32_t size)
                 free_page ((void *)(kstack_va + f * PAGE_SIZE));
             }
             kfree (t);
-            --task_counter;
+            pid_release ();
             return;
         }
     }
@@ -159,37 +192,27 @@ exec_fn (uint32_t *addr, uint32_t *function, uint32_t size)
     t->state = TASK_RUNNABLE;
 }
 
-void
-exec_user_fn (uint32_t *function, uint32_t size, struct task *parent)
+/* Core Ring 3 spawner: builds a task with the given pid and inserts it into the
+ * scheduler list. Pure with respect to task_counter — the caller owns PID
+ * policy (and rollback on failure). Returns the new task, or NULL. */
+static struct task *
+spawn_user (uint32_t pid, uint32_t *function, uint32_t size,
+            struct task *parent)
 {
     if (size == 0 || size > PAGE_SIZE || parent == NULL
         || parent == &kthreadd_task || task_counter >= MAX_PROC - 1)
     {
-        return;
+        return NULL;
     }
 
     struct task *t = kmalloc (sizeof (struct task));
     if (!t)
     {
-        return;
+        return NULL;
     }
     memset (t, 0, sizeof (struct task));
 
-    /* First Ring 3 process claims PID 1 (reserved by task_init for the future
-     * userland init / reaper, draft §10). Subsequent ones use the normal
-     * counter. PID 1 was never counted, so taking it doesn't shift the rest. */
-    static bool pid1_claimed = false;
-    bool took_pid1 = false;
-    if (!pid1_claimed)
-    {
-        t->pid = 1;
-        pid1_claimed = true;
-        took_pid1 = true;
-    }
-    else
-    {
-        t->pid = ++task_counter;
-    }
+    t->pid = pid;
 
     uint32_t kstack_va = KSTACK_VA_BASE + t->pid * KSTACK_PAGES * PAGE_SIZE;
     for (uint32_t p = 0; p < KSTACK_PAGES; p++)
@@ -202,15 +225,7 @@ exec_user_fn (uint32_t *function, uint32_t size, struct task *parent)
                 free_page ((void *)(kstack_va + f * PAGE_SIZE));
             }
             kfree (t);
-            if (took_pid1)
-            {
-                pid1_claimed = false;
-            }
-            else
-            {
-                --task_counter;
-            }
-            return;
+            return NULL;
         }
     }
     uint32_t kstack_top = kstack_va + KSTACK_PAGES * PAGE_SIZE;
@@ -224,15 +239,7 @@ exec_user_fn (uint32_t *function, uint32_t size, struct task *parent)
         }
         paging_proc_teardown (t->pid);
         kfree (t);
-        if (took_pid1)
-        {
-            pid1_claimed = false;
-        }
-        else
-        {
-            --task_counter;
-        }
-        return;
+        return NULL;
     }
 
     kstack_top -= sizeof (struct trap_frame);
@@ -269,6 +276,30 @@ exec_user_fn (uint32_t *function, uint32_t size, struct task *parent)
     task_list_head = t;
 
     t->state = TASK_RUNNABLE;
+    return t;
+}
+
+void
+exec_user_fn (uint32_t *function, uint32_t size, struct task *parent)
+{
+    int32_t pid = pid_alloc ();
+    if (pid < 0)
+    {
+        return;
+    }
+    if (spawn_user ((uint32_t)pid, function, size, parent) == NULL)
+    {
+        pid_release (); /* claim rolled back on failure */
+    }
+}
+
+/* Spawn the Ring 3 init at the reserved INIT_PID, child of init_task (PID 0).
+ * INIT_PID lives outside pid_alloc's range, so it never shifts the sequence. */
+struct task *
+exec_init_fn (uint32_t *function, uint32_t size)
+{
+    init_proc = spawn_user (INIT_PID, function, size, &init_task);
+    return init_proc;
 }
 
 void
@@ -284,7 +315,13 @@ task_reparent (struct task *task, struct task *new_parent)
 int32_t
 task_fork (struct trap_frame *frame)
 {
-    if (task_counter >= MAX_PROC - 1 || current_task->kstack == NULL)
+    if (current_task->kstack == NULL)
+    {
+        return -1;
+    }
+
+    int32_t pid = pid_alloc ();
+    if (pid < 0)
     {
         return -1;
     }
@@ -292,11 +329,12 @@ task_fork (struct trap_frame *frame)
     struct task *child = kmalloc (sizeof (struct task));
     if (!child)
     {
+        pid_release ();
         return -1;
     }
     memset (child, 0, sizeof (struct task));
 
-    child->pid = ++task_counter;
+    child->pid = (uint32_t)pid;
 
     /* allocate in parent's pgdir; the kstack PT is shared via paging_proc_init
      */
@@ -311,7 +349,7 @@ task_fork (struct trap_frame *frame)
                 free_page ((void *)(kstack_va + f * PAGE_SIZE));
             }
             kfree (child);
-            --task_counter;
+            pid_release ();
             return -1;
         }
     }
@@ -325,7 +363,7 @@ task_fork (struct trap_frame *frame)
             free_page ((void *)(kstack_va + f * PAGE_SIZE));
         }
         kfree (child);
-        --task_counter;
+        pid_release ();
         return -1;
     }
 

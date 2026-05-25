@@ -98,6 +98,7 @@ struct task
 extern uint32_t task_counter;
 extern struct task *task_list_head;
 extern struct task *current_task;
+extern struct task *init_proc; /* PID 1: userland init / reaper */
 extern struct task init_task;
 extern struct task kthreadd_task; /* PID 2: sentinel parent of all kthreads */
 
@@ -110,12 +111,16 @@ void exec_fn (uint32_t *addr, uint32_t *function, uint32_t size);
  * Ring0->Ring3 startup trap_frame on its kstack (cs=0x23, ds=0x2B,
  * user_ss=0x2B, user_esp=USER_STACK_TOP, eip=USER_CODE_BASE).
  *
- * The very first call claims the reserved PID 1 (future userland init reaper,
- * cf draft §10); subsequent calls use the normal task_counter sequence.
+ * Allocates the next PID from task_counter. PID 1 is owned by init (see
+ * exec_init_fn) and never handed out here.
  *
  * `parent` becomes the new task's parent — must NOT be &kthreadd_task (that
- * sentinel is for kernel threads only). Pass &init_task for the bootstrap. */
+ * sentinel is for kernel threads only). Pass init_proc for userland spawns. */
 void exec_user_fn (uint32_t *function, uint32_t size, struct task *parent);
+
+/* Spawn the Ring 3 init at the reserved PID 1, parented under init_task. Stores
+ * and returns the new task in init_proc. Call once, at boot. */
+struct task *exec_init_fn (uint32_t *function, uint32_t size);
 
 /* duplicate current_task. Returns child pid (parent), 0 (child), -1 (fail).
  * frame is the syscall trap frame, cloned onto the child kstack with eax=0. */
