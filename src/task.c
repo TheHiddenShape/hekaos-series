@@ -1,6 +1,8 @@
 #include "klib.h"
 #include "kmalloc.h"
+#include "kpanic.h"
 #include "paging.h"
+#include "printk.h"
 #include "sched.h"
 #include "signal.h"
 #include "trap_frame.h"
@@ -481,4 +483,129 @@ task_reap (struct task *zombie)
     paging_proc_teardown (zombie->pid);
 
     kfree (zombie);
+}
+
+/*
+ * Runtime test scenarios for fork/wait/exit/kill/signal.
+ *
+ * task_test (below) is purely structural: it validates that task_init left the
+ * tree in the expected state (init/kthreadd genealogy, list head, reserved
+ * counter) without touching it any further. Everything else is exercised
+ * manually from the shell and watched in eyeproc / dmesg / momentum: the
+ * helpers (add_child/remove_child/reparent), do_exit bookkeeping, and the
+ * mechanisms that need a live scheduler and ring0->ring3 transitions (blocking
+ * wait, SIGCHLD wakeup, reaping through wait, reparenting of a *live* orphan,
+ * ring 3 fork). Each scenario below lists the steps and the expected result.
+ *
+ * scenarii 1: fork + wait + exit happy path (ring 0).
+ *   steps:
+ *     1. forktest
+ *     2. dmesg
+ *   expect: dmesg shows "fork: parent" and "fork: child"; the parent blocks in
+ *     wait, the child exits, the parent collects it and exits. Both end up
+ *     reaped (gone from eyeproc), proving fork returns the child pid to the
+ *     parent and 0 to the child, wait collects the ZOMBIE, exit notifies via
+ *     SIGCHLD.
+ *
+ * scenarii 2: fork + wait + exit over int 0x80 (ring 3).
+ *   steps:
+ *     1. spawntsk -u 1   (ufork: child exit(1), parent waitpid then exit(0))
+ *     2. eyeproc         (watch the two new pids), then ESC
+ *     3. dmesg
+ *   expect: two ring 3 pids appear; the child reaches ZOMBIE then is reaped by
+ *     the parent's wait; the parent then exits and is reaped by init (PID 1).
+ *     Validates the ring 3 fork path and is_userspace inheritance.
+ *
+ * scenarii 3: orphan reparenting onto init (PID 1).
+ *   needs payload: a ring 3 proc that forks a long-lived child then exits
+ *     without waiting (e.g. parent exit(0) immediately, child spins).
+ *   steps:
+ *     1. spawn the orphan-maker
+ *     2. eyeproc
+ *   expect: the parent goes ZOMBIE and is reaped by init; the child's parent
+ *     pointer flips to PID 1 and it keeps running, proving do_exit reparents
+ *     live children to the reaper.
+ *
+ * scenarii 4: SIGKILL terminates and cannot be caught.
+ *   steps:
+ *     1. spawntsk -u 3   (uspin: never exits, visible RUNNING)
+ *     2. eyeproc         (read the uspin pid), then ESC
+ *     3. signal <pid> 9  (attempt to install a handler on SIGKILL)
+ *     4. kill <pid> 9
+ *   expect: the signal command is accepted but the disposition stays default
+ *     (SIGKILL is immutable); on kill the task turns ZOMBIE and is reaped by
+ *     init. No "signal handler fired" line in dmesg.
+ *
+ * scenarii 5: catchable signal runs the installed handler.
+ *   steps:
+ *     1. spawntsk -k 1   (heartbeat kthread, never exits)
+ *     2. eyeproc         (read the pid), then ESC
+ *     3. signal <pid> 10 (install debug handler for SIGUSR1)
+ *     4. kill <pid> 10
+ *     5. dmesg
+ *   expect: dmesg shows "signal handler fired: sig=10". Without the handler,
+ *     SIGUSR1 defaults to ignore, so the contrast proves dispatch honours the
+ *     registered handler over the default action.
+ *
+ * scenarii 6: kill rejects an unknown pid.
+ *   steps:
+ *     1. kill 9999 15
+ *   expect: "kill: pid not found"; nothing else changes. Validates the task
+ *     lookup before delivery.
+ *
+ * scenarii 7: default-terminate signal from the shell.
+ *   steps:
+ *     1. spawntsk -k 2   (compute kthread, never exits)
+ *     2. eyeproc         (read the pid), then ESC
+ *     3. kill <pid> 15   (SIGTERM, no handler installed)
+ *   expect: the task turns ZOMBIE then is reaped, exit code 128 + 15. Confirms
+ *     the SIG_DFL terminate path on a running task.
+ */
+void
+task_test (void)
+{
+    pr_info ("#### task test ####\n");
+
+    /* 1. task_init invariants: init_task is the running list head, kthreadd is
+     * grafted under it, task_counter sits at the reserved ceiling (2) */
+    {
+        if (init_task.pid != 0 || init_task.state != TASK_RUNNING)
+        {
+            kpanic ("task test: init_task pid/state wrong");
+        }
+        if (task_list_head != &init_task || current_task != &init_task)
+        {
+            kpanic ("task test: init_task not list head / current");
+        }
+        if (init_task.mm.pgdir == 0)
+        {
+            kpanic ("task test: init_task pgdir not loaded");
+        }
+        if (kthreadd_task.pid != 2 || kthreadd_task.parent != &init_task)
+        {
+            kpanic ("task test: kthreadd pid/parent wrong");
+        }
+
+        bool found = false;
+        struct task *c;
+        task_for_each_child (&init_task, c)
+        {
+            if (c == &kthreadd_task)
+            {
+                found = true;
+            }
+        }
+        if (!found)
+        {
+            kpanic ("task test: kthreadd not a child of init_task");
+        }
+        if (task_counter != 2)
+        {
+            kpanic ("task test: task_counter not at reserved ceiling");
+        }
+        pr_info ("task: init/kthreadd genealogy ok, counter=%u\n",
+                 task_counter);
+    }
+
+    pr_info ("task test passed\n\n");
 }

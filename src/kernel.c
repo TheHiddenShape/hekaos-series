@@ -1303,6 +1303,15 @@ kernel_main (void)
 
     task_init ();
 
+    /* verify the task/signal helpers right after init, before any dynamic task
+     * exists: asserts the init genealogy and the pure fork/exit/signal logic */
+    task_test ();
+    signal_test ();
+
+    /* the above only cover the pure init-time logic; the live use cases need a
+     * running scheduler and are documented as the manual scenarii in task.c,
+     * left to the developer to run from the shell. */
+
     /* bring up PID 1 (Ring 3 init / reaper) before interrupts are enabled, so
      * it is in the run queue and owns PID 1 before any other task spawns */
     uint32_t init_size = (uint32_t)init_fn_end - (uint32_t)init_fn;

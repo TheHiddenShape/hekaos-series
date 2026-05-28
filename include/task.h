@@ -104,6 +104,10 @@ extern struct task kthreadd_task; /* PID 2: sentinel parent of all kthreads */
 
 void task_init (void);
 
+/* boot-time structural check of task_init's init/kthreadd/pid invariants;
+ * runtime scenarios are documented in task.c */
+void task_test (void);
+
 void exec_fn (uint32_t *addr, uint32_t *function, uint32_t size);
 
 /* Spawn a Ring 3 process: maps a USER code page at USER_CODE_BASE filled with

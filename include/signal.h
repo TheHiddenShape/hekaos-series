@@ -108,4 +108,8 @@ void kernel_signal_register (struct task *t, int signum, sig_handler_t handler);
 void kernel_signal_send (struct task *t, int signum);
 void kernel_signal_dispatch (struct task *t);
 
+/* boot-time self-test of register/send/dispatch, default actions, immutability,
+ * dispatch order and the exception-to-signal map */
+void signal_test (void);
+
 #endif
