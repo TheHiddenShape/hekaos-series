@@ -4,6 +4,8 @@
 .global uid_fn_end
 .global uspin_fn
 .global uspin_fn_end
+.global udiv_fn
+.global udiv_fn_end
 
 # ufork: fork; child exit(1); parent waitpid then exit(0). Silent.
 ufork_fn:
@@ -54,3 +56,14 @@ uspin_fn:
     inc %eax
     jmp .Lspin
 uspin_fn_end:
+
+# udiv: integer divide by zero from Ring 3 -> triggers #DE (vector 0).
+# div computes edx:eax / ecx; with ecx = 0 the CPU raises divide error.
+udiv_fn:
+    xor %edx, %edx
+    mov $1, %eax
+    xor %ecx, %ecx
+    div %ecx
+.Ludiv_hang:
+    jmp .Ludiv_hang
+udiv_fn_end:

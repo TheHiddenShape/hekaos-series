@@ -14,4 +14,8 @@ void uid_fn_end (void);
 void uspin_fn (void);
 void uspin_fn_end (void);
 
+/* integer divide by zero from Ring 3: triggers #DE (vector 0). */
+void udiv_fn (void);
+void udiv_fn_end (void);
+
 #endif

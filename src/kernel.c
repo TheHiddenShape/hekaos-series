@@ -416,14 +416,14 @@ shell_spawnkthread (int slot)
     terminal_writestring ("spawntsk -k: launched\n");
 }
 
-#define MAX_UTEST_PROCS 3
+#define MAX_UTEST_PROCS 4
 
 void
 shell_spawnuser (int slot)
 {
     if (slot < 1 || slot > MAX_UTEST_PROCS)
     {
-        terminal_writestring ("spawntsk -u: slot must be 1..3\n");
+        terminal_writestring ("spawntsk -u: slot must be 1..4\n");
         return;
     }
 
@@ -442,6 +442,10 @@ shell_spawnuser (int slot)
         case 3:
             fn = uspin_fn;
             fn_end = uspin_fn_end;
+            break;
+        case 4:
+            fn = udiv_fn;
+            fn_end = udiv_fn_end;
             break;
     }
 

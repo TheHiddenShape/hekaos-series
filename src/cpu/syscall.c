@@ -18,15 +18,7 @@ sys_exit (uint32_t status, uint32_t unused1, uint32_t unused2)
     (void)unused2;
 
     do_exit (current_task, (int32_t)status);
-
-    /* sti+hlt so the timer tick can switch us out (cli+hlt would deadlock) */
-    while (1)
-    {
-        enable_interrupts ();
-        halt_cpu ();
-    }
-
-    return 0;
+    cpu_park_dying ();
 }
 
 static int32_t

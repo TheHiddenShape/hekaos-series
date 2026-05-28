@@ -6,7 +6,9 @@
 #include "pic.h"
 #include "pit.h"
 #include "printk.h"
+#include "signal.h"
 #include "syscall.h"
+#include "task.h"
 #include "trap_frame.h"
 #include "vga.h"
 #include <stdbool.h>
@@ -80,12 +82,33 @@ unhandled_exception (struct trap_frame *frame)
     kpanic ("unhandled exception");
 }
 
+__attribute__ ((noreturn)) void
+cpu_park_dying (void)
+{
+    while (1)
+    {
+        enable_interrupts ();
+        halt_cpu ();
+    }
+}
+
+static void
+kill_user_on_fault (struct trap_frame *frame)
+{
+    kernel_signal_send (current_task, signal_from_exception (frame->int_no));
+    cpu_park_dying ();
+}
+
 void
 isr_handler (struct trap_frame *frame)
 {
     switch (frame->int_no)
     {
-        case 0: /* todo: check CPL, send SIGFPE to process in userspace */
+        case 0:
+            if ((frame->cs & 3) == 3)
+            {
+                kill_user_on_fault (frame);
+            }
             trap_frame_display (frame);
             kpanic ("division by zero");
             break;
@@ -101,15 +124,27 @@ isr_handler (struct trap_frame *frame)
             trap_frame_display (frame);
             kpanic ("breakpoint");
             break;
-        case 4: /* todo: check CPL, send SIGSEGV to process in userspace */
+        case 4:
+            if ((frame->cs & 3) == 3)
+            {
+                kill_user_on_fault (frame);
+            }
             trap_frame_display (frame);
             kpanic ("overflow");
             break;
-        case 5: /* todo: check CPL, send SIGSEGV to process in userspace */
+        case 5:
+            if ((frame->cs & 3) == 3)
+            {
+                kill_user_on_fault (frame);
+            }
             trap_frame_display (frame);
             kpanic ("bound range exceeded");
             break;
-        case 6: /* todo: check CPL, send SIGILL to process in userspace */
+        case 6:
+            if ((frame->cs & 3) == 3)
+            {
+                kill_user_on_fault (frame);
+            }
             trap_frame_display (frame);
             kpanic ("invalid opcode");
             break;
@@ -125,33 +160,61 @@ isr_handler (struct trap_frame *frame)
             trap_frame_display (frame);
             kpanic ("coprocessor segment overrun");
             break;
-        case 10: /* todo: check CPL, send SIGSEGV to process in userspace */
+        case 10:
+            if ((frame->cs & 3) == 3)
+            {
+                kill_user_on_fault (frame);
+            }
             trap_frame_display (frame);
             kpanic ("invalid task state segment");
             break;
-        case 11: /* todo: check CPL, send SIGBUS to process in userspace */
+        case 11:
+            if ((frame->cs & 3) == 3)
+            {
+                kill_user_on_fault (frame);
+            }
             trap_frame_display (frame);
             kpanic ("segment not present");
             break;
-        case 12: /* todo: check CPL, send SIGBUS to process in userspace */
+        case 12:
+            if ((frame->cs & 3) == 3)
+            {
+                kill_user_on_fault (frame);
+            }
             trap_frame_display (frame);
             kpanic ("stack fault");
             break;
-        case 13: /* todo: check CPL, send SIGSEGV to process in userspace */
+        case 13:
+            if ((frame->cs & 3) == 3)
+            {
+                kill_user_on_fault (frame);
+            }
             gpf_handler (frame);
             break;
-        case 14: /* todo: demand paging, copy-on-write, swap in userspace */
+        case 14:
+            if ((frame->cs & 3) == 3)
+            {
+                kill_user_on_fault (frame);
+            }
             page_fault_handler (frame);
             break;
         case 15:
             trap_frame_display (frame);
             kpanic ("reserved exception (0x0f)");
             break;
-        case 16: /* todo: check CPL, send SIGFPE to process in userspace */
+        case 16:
+            if ((frame->cs & 3) == 3)
+            {
+                kill_user_on_fault (frame);
+            }
             trap_frame_display (frame);
             kpanic ("x87 math fault");
             break;
-        case 17: /* todo: check CPL, send SIGBUS to process in userspace */
+        case 17:
+            if ((frame->cs & 3) == 3)
+            {
+                kill_user_on_fault (frame);
+            }
             trap_frame_display (frame);
             kpanic ("alignment check");
             break;
@@ -159,7 +222,11 @@ isr_handler (struct trap_frame *frame)
             trap_frame_display (frame);
             kpanic ("machine check");
             break;
-        case 19: /* todo: check CPL, send SIGFPE to process in userspace */
+        case 19:
+            if ((frame->cs & 3) == 3)
+            {
+                kill_user_on_fault (frame);
+            }
             trap_frame_display (frame);
             kpanic ("simd floating-point exception");
             break;
