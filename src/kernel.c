@@ -172,16 +172,16 @@ ep_draw_cell (int gc, int gr, struct task *t)
     uint8_t dim = vga_entry_color (VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     uint8_t addr = vga_entry_color (VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
 
-    /* row 1: PID */
     {
         char line[EP_INNER_W + 1];
-        line[0] = 'P';
-        line[1] = 'I';
-        line[2] = 'D';
-        line[3] = ':';
-        line[4] = ' ';
-        int n = ep_fmt_uint (line + 5, t->pid);
-        line[5 + n] = '\0';
+        line[0] = t->is_userspace ? 'U' : 'K';
+        line[1] = 'P';
+        line[2] = 'I';
+        line[3] = 'D';
+        line[4] = ':';
+        line[5] = ' ';
+        int n = ep_fmt_uint (line + 6, t->pid);
+        line[6 + n] = '\0';
         ep_puts (x0 + 1, y0 + 1, line, text, EP_INNER_W);
     }
 
