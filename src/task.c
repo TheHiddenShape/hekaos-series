@@ -497,26 +497,18 @@ task_reap (struct task *zombie)
  * wait, SIGCHLD wakeup, reaping through wait, reparenting of a *live* orphan,
  * ring 3 fork). Each scenario below lists the steps and the expected result.
  *
- * scenarii 1: fork + wait + exit happy path (ring 0).
- *   steps:
- *     1. forktest
- *     2. dmesg
- *   expect: dmesg shows "fork: parent" and "fork: child"; the parent blocks in
- *     wait, the child exits, the parent collects it and exits. Both end up
- *     reaped (gone from eyeproc), proving fork returns the child pid to the
- *     parent and 0 to the child, wait collects the ZOMBIE, exit notifies via
- *     SIGCHLD.
- *
- * scenarii 2: fork + wait + exit over int 0x80 (ring 3).
+ * scenarii 1: fork + wait + exit over int 0x80 (ring 3).
  *   steps:
  *     1. spawntsk -u 1   (ufork: child exit(1), parent waitpid then exit(0))
  *     2. eyeproc         (watch the two new pids), then ESC
  *     3. dmesg
  *   expect: two ring 3 pids appear; the child reaches ZOMBIE then is reaped by
  *     the parent's wait; the parent then exits and is reaped by init (PID 1).
- *     Validates the ring 3 fork path and is_userspace inheritance.
+ *     Validates the ring 3 fork path and is_userspace inheritance. (fork/wait/
+ *     exit is demonstrated in ring 3 only: kthreads are a flat pool under
+ *     kthreadd and have no kernel reaper, so they must not fork.)
  *
- * scenarii 3: orphan reparenting onto init (PID 1).
+ * scenarii 2: orphan reparenting onto init (PID 1).
  *   needs payload: a ring 3 proc that forks a long-lived child then exits
  *     without waiting (e.g. parent exit(0) immediately, child spins).
  *   steps:
@@ -526,7 +518,7 @@ task_reap (struct task *zombie)
  *     pointer flips to PID 1 and it keeps running, proving do_exit reparents
  *     live children to the reaper.
  *
- * scenarii 4: SIGKILL terminates and cannot be caught.
+ * scenarii 3: SIGKILL terminates and cannot be caught.
  *   steps:
  *     1. spawntsk -u 3   (uspin: never exits, visible RUNNING)
  *     2. eyeproc         (read the uspin pid), then ESC
@@ -536,7 +528,7 @@ task_reap (struct task *zombie)
  *     (SIGKILL is immutable); on kill the task turns ZOMBIE and is reaped by
  *     init. No "signal handler fired" line in dmesg.
  *
- * scenarii 5: catchable signal runs the installed handler.
+ * scenarii 4: catchable signal runs the installed handler.
  *   steps:
  *     1. spawntsk -k 1   (heartbeat kthread, never exits)
  *     2. eyeproc         (read the pid), then ESC
@@ -547,19 +539,11 @@ task_reap (struct task *zombie)
  *     SIGUSR1 defaults to ignore, so the contrast proves dispatch honours the
  *     registered handler over the default action.
  *
- * scenarii 6: kill rejects an unknown pid.
+ * scenarii 5: kill rejects an unknown pid.
  *   steps:
  *     1. kill 9999 15
  *   expect: "kill: pid not found"; nothing else changes. Validates the task
  *     lookup before delivery.
- *
- * scenarii 7: default-terminate signal from the shell.
- *   steps:
- *     1. spawntsk -k 2   (compute kthread, never exits)
- *     2. eyeproc         (read the pid), then ESC
- *     3. kill <pid> 15   (SIGTERM, no handler installed)
- *   expect: the task turns ZOMBIE then is reaped, exit code 128 + 15. Confirms
- *     the SIG_DFL terminate path on a running task.
  */
 void
 task_test (void)

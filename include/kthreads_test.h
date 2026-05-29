@@ -20,8 +20,4 @@ void kth_memread_fn_end (void);
 void kth_slow_fn_end (void);
 void kth_idle_fn_end (void);
 
-/* fork/wait/exit demo driver via int $0x80 */
-void forker_fn (void);
-void forker_fn_end (void);
-
 #endif

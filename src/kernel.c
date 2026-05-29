@@ -362,10 +362,6 @@ ep_render (int page, struct task **procs, int nprocs, int total_pages)
 static uint8_t proc_code_buf[MAX_TEST_PROCS][PAGE_SIZE]
     __attribute__ ((aligned (PAGE_SIZE)));
 
-/* dedicated buffer for the fork driver, separate from the numbered spawn slots
- */
-static uint8_t forker_code_buf[PAGE_SIZE] __attribute__ ((aligned (PAGE_SIZE)));
-
 void
 shell_spawnkthread (int slot)
 {
@@ -637,19 +633,6 @@ shell_signal (uint32_t pid, int signum)
              pid);
 }
 
-static void
-shell_forktest (void)
-{
-    uint32_t size = (uint32_t)forker_fn_end - (uint32_t)forker_fn;
-    if (size == 0 || size > PAGE_SIZE)
-    {
-        terminal_writestring ("forktest: invalid function size\n");
-        return;
-    }
-    exec_fn ((uint32_t *)forker_code_buf, (uint32_t *)forker_fn, size);
-    terminal_writestring ("forktest: launched\n");
-}
-
 #define CMD_BUFFER_SIZE 256
 char cmd_buffer[CMD_BUFFER_SIZE];
 size_t cmd_index = 0;
@@ -917,9 +900,6 @@ static const struct shell_cmd shell_commands[] = {
       "  launch a test payload. -k: kernel thread (ring 0);\n"
       "  -u: user process (ring 3, syscalls via int 0x80).\n"
       "  [N]: 1-based slot to run a single test; omit to launch them all.\n" },
-    { "forktest", CMD_SW, "run a fork+wait+exit demo via int 0x80",
-      "  run a fork + wait + exit demo driven entirely by int 0x80\n"
-      "  syscalls, to exercise the syscall/fork path.\n" },
     { "kill <pid> <sig>", CMD_SW, "send signal sig to pid",
       "  send signal <sig> to process <pid> (both decimal). the default\n"
       "  action applies unless a handler was installed (see 'def signal').\n" },
@@ -1125,10 +1105,6 @@ shell_execute (const char *cmd)
                 shell_spawnuser ((int)slot);
             }
         }
-    }
-    else if (strcmp (cmd, "forktest") == 0)
-    {
-        shell_forktest ();
     }
     else if (shell_starts_with (cmd, "kill ") > 0)
     {
