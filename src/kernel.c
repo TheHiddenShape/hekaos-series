@@ -915,6 +915,9 @@ static const struct shell_cmd shell_commands[] = {
       "RAM.\n" },
     { "dmesg", CMD_SW, "display kernel ring buffer",
       "  print the kernel log ring buffer (pr_* messages since boot).\n" },
+    { "plog <pid>", CMD_SW, "dump a process output log",
+      "  print what process <pid> wrote to fd 1/2, captured in its own\n"
+      "  per-task ring buffer. lost once the process is reaped.\n" },
     { "eyeproc", CMD_SW, "full-screen process grid (ESC to quit)",
       "  full-screen live grid of all processes; refreshes continuously.\n"
       "  press ESC to return to the shell.\n" },
@@ -1056,6 +1059,20 @@ shell_execute (const char *cmd)
     else if (strcmp (cmd, "dmesg") == 0)
     {
         dmesg ();
+    }
+    else if (shell_starts_with (cmd, "plog ") > 0)
+    {
+        const char *p = cmd + 5;
+        shell_skip_spaces (&p);
+        uint32_t pid = 0;
+        if (!shell_parse_uint (&p, &pid))
+        {
+            terminal_writestring ("plog: usage: plog <pid>\n");
+        }
+        else
+        {
+            task_dump_log (pid);
+        }
     }
     else if (strcmp (cmd, "memdump") == 0)
     {

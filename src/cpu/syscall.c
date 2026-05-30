@@ -1,9 +1,11 @@
 #include "syscall.h"
 #include "interrupts.h"
+#include "paging.h"
 #include "signal.h"
 #include "task.h"
 #include "trap_frame.h"
 #include "vga.h"
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -21,6 +23,17 @@ sys_exit (uint32_t status, uint32_t unused1, uint32_t unused2)
     cpu_park_dying ();
 }
 
+static bool
+user_range_ok (uint32_t addr, uint32_t count)
+{
+    uint32_t end = addr + count;
+    if (end < addr)
+    {
+        return false;
+    }
+    return addr >= USER_CODE_BASE && end <= KERNEL_VIRT_BASE;
+}
+
 static int32_t
 sys_write (uint32_t fd, uint32_t buf, uint32_t count)
 {
@@ -28,10 +41,14 @@ sys_write (uint32_t fd, uint32_t buf, uint32_t count)
     {
         return -1;
     }
+    if (!user_range_ok (buf, count))
+    {
+        return -1;
+    }
     const char *s = (const char *)buf;
     for (uint32_t i = 0; i < count; i++)
     {
-        terminal_putchar (s[i]);
+        task_log_putchar (current_task, s[i]);
     }
     return (int32_t)count;
 }

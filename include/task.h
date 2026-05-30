@@ -11,6 +11,8 @@
  * kstack_top = kstack + KSTACK_PAGES * PAGE_SIZE when updating TSS.esp0. */
 #define KSTACK_PAGES 2
 
+#define TASK_LOG_SIZE 1024
+
 enum task_state
 {
     TASK_RUNNABLE = 0, /* ready to be scheduled */
@@ -91,6 +93,10 @@ struct task
      * mm.pgdir at +32). Adding fields here is safe; do not insert earlier. */
     bool is_userspace; /* true iff this task ever returns to Ring 3; gates
                         * the TSS.esp0 update in schedule() */
+
+    char *log_buf;
+    uint32_t log_head;
+    uint32_t log_len;
 };
 
 #define MAX_PROC 128
@@ -138,6 +144,9 @@ void do_exit (struct task *t, int32_t code);
 /* tear down a TASK_ZOMBIE: kstack, user pgdir, tree links, task struct.
  * CR3 must not be zombie's pgdir. */
 void task_reap (struct task *zombie);
+
+void task_log_putchar (struct task *t, char c);
+void task_dump_log (uint32_t pid);
 
 /* n-ary tree helpers */
 void task_add_child (struct task *parent, struct task *child);

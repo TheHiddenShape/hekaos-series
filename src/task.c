@@ -1,11 +1,13 @@
 #include "klib.h"
 #include "kmalloc.h"
+#include "kmem_dyn_alloc.h"
 #include "kpanic.h"
 #include "paging.h"
 #include "printk.h"
 #include "sched.h"
 #include "signal.h"
 #include "trap_frame.h"
+#include "vga.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -76,6 +78,54 @@ static void
 pid_release (void)
 {
     --task_counter;
+}
+
+void
+task_log_putchar (struct task *t, char c)
+{
+    if (t->log_buf == NULL)
+    {
+        t->log_buf = kmem_alloc (TASK_LOG_SIZE);
+        if (t->log_buf == NULL)
+        {
+            return;
+        }
+    }
+    t->log_buf[t->log_head] = c;
+    t->log_head = (t->log_head + 1) & (TASK_LOG_SIZE - 1);
+    if (t->log_len < TASK_LOG_SIZE)
+    {
+        t->log_len++;
+    }
+}
+
+void
+task_dump_log (uint32_t pid)
+{
+    struct task *t = NULL;
+    for (struct task *it = task_list_head; it != NULL; it = it->next)
+    {
+        if (it->pid == pid)
+        {
+            t = it;
+            break;
+        }
+    }
+    if (t == NULL)
+    {
+        terminal_writestring ("plog: no such pid\n");
+        return;
+    }
+    if (t->log_buf == NULL || t->log_len == 0)
+    {
+        return;
+    }
+
+    uint32_t start = (t->log_len < TASK_LOG_SIZE) ? 0 : t->log_head;
+    for (uint32_t i = 0; i < t->log_len; i++)
+    {
+        terminal_putchar (t->log_buf[(start + i) & (TASK_LOG_SIZE - 1)]);
+    }
 }
 
 void
@@ -478,6 +528,11 @@ task_reap (struct task *zombie)
         {
             free_page ((void *)(base + p * PAGE_SIZE));
         }
+    }
+
+    if (zombie->log_buf != NULL)
+    {
+        kmem_free (zombie->log_buf);
     }
 
     paging_proc_teardown (zombie->pid);
