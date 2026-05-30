@@ -66,6 +66,10 @@ isr_common_stub:
     call isr_handler
     add $4, %esp
 
+    push %esp
+    call signal_check_and_deliver
+    add $4, %esp
+
     pop %eax
     mov %ax, %ds
     mov %ax, %es
@@ -118,6 +122,10 @@ irq_common_stub:
     movl $0, need_resched
 
 .Lno_resched:
+    push %esp
+    call signal_check_and_deliver
+    add $4, %esp
+
     pop %eax
     mov %ax, %ds
     mov %ax, %es

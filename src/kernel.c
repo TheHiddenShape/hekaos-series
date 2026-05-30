@@ -412,14 +412,14 @@ shell_spawnkthread (int slot)
     terminal_writestring ("spawntsk -k: launched\n");
 }
 
-#define MAX_UTEST_PROCS 4
+#define MAX_UTEST_PROCS 5
 
 void
 shell_spawnuser (int slot)
 {
     if (slot < 1 || slot > MAX_UTEST_PROCS)
     {
-        terminal_writestring ("spawntsk -u: slot must be 1..4\n");
+        terminal_writestring ("spawntsk -u: slot must be 1..5\n");
         return;
     }
 
@@ -442,6 +442,10 @@ shell_spawnuser (int slot)
         case 4:
             fn = udiv_fn;
             fn_end = udiv_fn_end;
+            break;
+        case 5:
+            fn = usig_fn;
+            fn_end = usig_fn_end;
             break;
     }
 
@@ -628,9 +632,27 @@ shell_signal (uint32_t pid, int signum)
         terminal_writestring ("signal: pid not found\n");
         return;
     }
-    kernel_signal_register (t, signum, shell_debug_sig_handler);
-    pr_info ("signal: installed debug handler for sig %d on pid %u\n", signum,
-             pid);
+
+    if (SIGMASK (signum) & SIG_IMMUTABLE_MASK)
+    {
+        pr_warn ("signal: sig %d disposition is immutable on pid %u\n", signum,
+                 pid);
+        return;
+    }
+
+    sig_handler_t handler;
+    if (t->is_userspace)
+    {
+        uint32_t off = (uint32_t)uhandler - (uint32_t)usig_fn;
+        handler = (sig_handler_t)(USER_CODE_BASE + off);
+    }
+    else
+    {
+        handler = shell_debug_sig_handler;
+    }
+    kernel_signal_register (t, signum, handler);
+    pr_info ("signal: installed %s handler for sig %d on pid %u\n",
+             t->is_userspace ? "ring3" : "debug", signum, pid);
 }
 
 #define CMD_BUFFER_SIZE 256

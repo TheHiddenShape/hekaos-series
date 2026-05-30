@@ -2,7 +2,10 @@
 #include "klib.h"
 #include "kpanic.h"
 #include "printk.h"
+#include "syscall.h"
 #include "task.h"
+#include "trap_frame.h"
+#include <stddef.h>
 
 /*
  * default kernel actions for each signal.
@@ -89,7 +92,6 @@ kernel_signal_dispatch (struct task *t)
         /* isolate lowest set bit */
         sigset_t bit = pending & (~pending + 1);
         pending &= ~bit;
-        t->pending_signals &= ~bit;
 
         /* recover signum from bit position (bit = 1 << (signum - 1)) */
         int signum = 1;
@@ -103,6 +105,7 @@ kernel_signal_dispatch (struct task *t)
         /* immutable signals always take the default action */
         if (bit & SIG_IMMUTABLE_MASK)
         {
+            t->pending_signals &= ~bit;
             sig_default_action (t, signum);
             continue;
         }
@@ -111,17 +114,95 @@ kernel_signal_dispatch (struct task *t)
 
         if (handler == SIG_IGN)
         {
+            t->pending_signals &= ~bit;
             continue;
         }
 
-        if (handler != SIG_DFL)
+        if (handler == SIG_DFL)
         {
-            handler (signum);
-        }
-        else
-        {
+            t->pending_signals &= ~bit;
             sig_default_action (t, signum);
+            continue;
         }
+
+        if (t->is_userspace)
+        {
+            continue;
+        }
+
+        t->pending_signals &= ~bit;
+        handler (signum);
+    }
+}
+
+static void
+setup_user_sigframe (struct task *t, struct trap_frame *frame, int signum,
+                     sig_handler_t handler)
+{
+    (void)t;
+
+    uint32_t usp = frame->user_esp - sizeof (struct sigframe);
+    usp &= ~0xFu;
+    usp -= 4;
+
+    struct sigframe *sf = (struct sigframe *)usp;
+
+    sf->saved = *frame;
+    sf->sig = signum;
+    sf->pretcode = usp + offsetof (struct sigframe, trampoline);
+
+    sf->trampoline[0] = 0xb8;
+    sf->trampoline[1] = (uint8_t)(SYS_SIGRETURN & 0xff);
+    sf->trampoline[2] = (uint8_t)((SYS_SIGRETURN >> 8) & 0xff);
+    sf->trampoline[3] = (uint8_t)((SYS_SIGRETURN >> 16) & 0xff);
+    sf->trampoline[4] = (uint8_t)((SYS_SIGRETURN >> 24) & 0xff);
+    sf->trampoline[5] = 0xcd;
+    sf->trampoline[6] = 0x80;
+    sf->trampoline[7] = 0x90;
+
+    frame->eip = (uint32_t)handler;
+    frame->user_esp = usp;
+    frame->eflags &= ~(1u << 10);
+}
+
+void
+signal_check_and_deliver (struct trap_frame *frame)
+{
+    if ((frame->cs & 3) != 3)
+    {
+        return;
+    }
+
+    struct task *t = current_task;
+    sigset_t pending = t->pending_signals;
+
+    while (pending)
+    {
+        sigset_t bit = pending & (~pending + 1);
+        pending &= ~bit;
+
+        int signum = 1;
+        sigset_t tmp = bit >> 1;
+        while (tmp)
+        {
+            signum++;
+            tmp >>= 1;
+        }
+
+        if (bit & SIG_IMMUTABLE_MASK)
+        {
+            continue;
+        }
+
+        sig_handler_t handler = t->signal_handlers[signum];
+        if (handler == SIG_DFL || handler == SIG_IGN)
+        {
+            continue;
+        }
+
+        t->pending_signals &= ~bit;
+        setup_user_sigframe (t, frame, signum, handler);
+        return;
     }
 }
 

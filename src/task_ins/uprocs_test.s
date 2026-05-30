@@ -6,6 +6,9 @@
 .global uspin_fn_end
 .global udiv_fn
 .global udiv_fn_end
+.global usig_fn
+.global usig_fn_end
+.global uhandler
 
 # ufork: fork; child exit(1); parent waitpid then exit(0). Silent.
 ufork_fn:
@@ -67,3 +70,22 @@ udiv_fn:
 .Ludiv_hang:
     jmp .Ludiv_hang
 udiv_fn_end:
+
+usig_fn:
+.Lusig_spin:
+    jmp .Lusig_spin
+
+uhandler:
+    call .Luhandler_anchor
+.Luhandler_anchor:
+    pop %ebp
+    lea (usig_hdlr - .Luhandler_anchor)(%ebp), %ecx
+    mov $4, %eax
+    mov $1, %ebx
+    mov $8, %edx
+    int $0x80
+    ret
+
+usig_hdlr:
+    .ascii "HANDLER\n"
+usig_fn_end:

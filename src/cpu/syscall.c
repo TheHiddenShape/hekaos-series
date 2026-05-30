@@ -183,11 +183,34 @@ sys_fork (uint32_t unused0, uint32_t unused1, uint32_t unused2)
     return task_fork (current_task->thread.tf);
 }
 
+static int32_t
+sys_sigreturn (uint32_t unused0, uint32_t unused1, uint32_t unused2)
+{
+    (void)unused0;
+    (void)unused1;
+    (void)unused2;
+
+    struct trap_frame *frame = current_task->thread.tf;
+    struct sigframe *sf
+        = (struct sigframe *)(frame->user_esp
+                              - offsetof (struct sigframe, sig));
+
+    *frame = sf->saved;
+
+    frame->cs = 0x23;
+    frame->user_ss = 0x2B;
+    frame->ds = 0x2B;
+    frame->eflags = (frame->eflags & 0x00000CD5u) | 0x202u;
+
+    return (int32_t)frame->eax;
+}
+
 static const syscall_fn_t syscall_table[SYSCALL_TABLE_SIZE] = {
-    [SYS_EXIT] = sys_exit,     [SYS_FORK] = sys_fork,
-    [SYS_WRITE] = sys_write,   [SYS_WAITPID] = sys_wait,
-    [SYS_KILL] = sys_kill,     [SYS_SIGNAL] = sys_signal,
-    [SYS_GETUID] = sys_getuid, [SYS_GETEUID] = sys_geteuid,
+    [SYS_EXIT] = sys_exit,           [SYS_FORK] = sys_fork,
+    [SYS_WRITE] = sys_write,         [SYS_WAITPID] = sys_wait,
+    [SYS_KILL] = sys_kill,           [SYS_SIGNAL] = sys_signal,
+    [SYS_SIGRETURN] = sys_sigreturn, [SYS_GETUID] = sys_getuid,
+    [SYS_GETEUID] = sys_geteuid,
 };
 
 void

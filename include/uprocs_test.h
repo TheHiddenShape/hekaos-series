@@ -18,4 +18,9 @@ void uspin_fn_end (void);
 void udiv_fn (void);
 void udiv_fn_end (void);
 
+void usig_fn (void);
+void usig_fn_end (void);
+
+void uhandler (void);
+
 #endif

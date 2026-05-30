@@ -11,6 +11,7 @@
 #define SYS_WAITPID 7
 #define SYS_KILL 37
 #define SYS_SIGNAL 48
+#define SYS_SIGRETURN 119
 #define SYS_GETUID 199
 #define SYS_GETEUID 201
 
