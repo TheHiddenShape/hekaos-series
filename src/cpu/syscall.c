@@ -35,6 +35,20 @@ user_range_ok (uint32_t addr, uint32_t count)
 }
 
 static int32_t
+sys_read (uint32_t fd, uint32_t buf, uint32_t count)
+{
+    if (fd != 0)
+    {
+        return -1;
+    }
+    if (!user_range_ok (buf, count))
+    {
+        return -1;
+    }
+    return (int32_t)task_input_read (current_task, (char *)buf, count);
+}
+
+static int32_t
 sys_write (uint32_t fd, uint32_t buf, uint32_t count)
 {
     if (fd != 1 && fd != 2)
@@ -223,11 +237,11 @@ sys_sigreturn (uint32_t unused0, uint32_t unused1, uint32_t unused2)
 }
 
 static const syscall_fn_t syscall_table[SYSCALL_TABLE_SIZE] = {
-    [SYS_EXIT] = sys_exit,           [SYS_FORK] = sys_fork,
-    [SYS_WRITE] = sys_write,         [SYS_WAITPID] = sys_wait,
-    [SYS_KILL] = sys_kill,           [SYS_SIGNAL] = sys_signal,
-    [SYS_SIGRETURN] = sys_sigreturn, [SYS_GETUID] = sys_getuid,
-    [SYS_GETEUID] = sys_geteuid,
+    [SYS_EXIT] = sys_exit,     [SYS_FORK] = sys_fork,
+    [SYS_READ] = sys_read,     [SYS_WRITE] = sys_write,
+    [SYS_WAITPID] = sys_wait,  [SYS_KILL] = sys_kill,
+    [SYS_SIGNAL] = sys_signal, [SYS_SIGRETURN] = sys_sigreturn,
+    [SYS_GETUID] = sys_getuid, [SYS_GETEUID] = sys_geteuid,
 };
 
 void

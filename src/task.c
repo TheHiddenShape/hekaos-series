@@ -128,6 +128,63 @@ task_dump_log (uint32_t pid)
     }
 }
 
+uint32_t
+task_input_read (struct task *t, char *dst, uint32_t count)
+{
+    uint32_t n = 0;
+    while (n < count && t->in_buf != NULL && t->in_head != t->in_tail)
+    {
+        dst[n] = t->in_buf[t->in_tail];
+        t->in_tail = (t->in_tail + 1) & (TASK_INPUT_SIZE - 1);
+        n++;
+    }
+    return n;
+}
+
+static void
+task_input_push (struct task *t, char c)
+{
+    uint32_t next = (t->in_head + 1) & (TASK_INPUT_SIZE - 1);
+    if (next == t->in_tail)
+    {
+        return;
+    }
+    t->in_buf[t->in_head] = c;
+    t->in_head = next;
+}
+
+int32_t
+task_feed (uint32_t pid, const char *s)
+{
+    struct task *t = NULL;
+    for (struct task *it = task_list_head; it != NULL; it = it->next)
+    {
+        if (it->pid == pid)
+        {
+            t = it;
+            break;
+        }
+    }
+    if (t == NULL)
+    {
+        return -1;
+    }
+    if (t->in_buf == NULL)
+    {
+        t->in_buf = kmem_alloc (TASK_INPUT_SIZE);
+        if (t->in_buf == NULL)
+        {
+            return -1;
+        }
+    }
+    for (uint32_t i = 0; s[i] != '\0'; i++)
+    {
+        task_input_push (t, s[i]);
+    }
+    task_input_push (t, '\n');
+    return 0;
+}
+
 void
 task_add_child (struct task *parent, struct task *child)
 {
@@ -533,6 +590,11 @@ task_reap (struct task *zombie)
     if (zombie->log_buf != NULL)
     {
         kmem_free (zombie->log_buf);
+    }
+
+    if (zombie->in_buf != NULL)
+    {
+        kmem_free (zombie->in_buf);
     }
 
     paging_proc_teardown (zombie->pid);

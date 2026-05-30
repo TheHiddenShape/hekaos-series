@@ -9,6 +9,8 @@
 .global usig_fn
 .global usig_fn_end
 .global uhandler
+.global uread_fn
+.global uread_fn_end
 
 # ufork: fork; child exit(1); parent waitpid then exit(0). Silent.
 ufork_fn:
@@ -89,3 +91,21 @@ uhandler:
 usig_hdlr:
     .ascii "HANDLER\n"
 usig_fn_end:
+
+uread_fn:
+    sub $64, %esp
+.Luread_loop:
+    mov $3, %eax
+    xor %ebx, %ebx
+    mov %esp, %ecx
+    mov $64, %edx
+    int $0x80
+    test %eax, %eax
+    jz .Luread_loop
+    mov %eax, %edx
+    mov $4, %eax
+    mov $1, %ebx
+    mov %esp, %ecx
+    int $0x80
+    jmp .Luread_loop
+uread_fn_end:

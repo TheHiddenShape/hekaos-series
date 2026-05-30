@@ -7,6 +7,7 @@
 /* syscall numbers (Linux i386 ABI) */
 #define SYS_EXIT 1
 #define SYS_FORK 2
+#define SYS_READ 3
 #define SYS_WRITE 4
 #define SYS_WAITPID 7
 #define SYS_KILL 37

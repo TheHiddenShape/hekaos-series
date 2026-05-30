@@ -412,14 +412,14 @@ shell_spawnkthread (int slot)
     terminal_writestring ("spawntsk -k: launched\n");
 }
 
-#define MAX_UTEST_PROCS 5
+#define MAX_UTEST_PROCS 6
 
 void
 shell_spawnuser (int slot)
 {
     if (slot < 1 || slot > MAX_UTEST_PROCS)
     {
-        terminal_writestring ("spawntsk -u: slot must be 1..5\n");
+        terminal_writestring ("spawntsk -u: slot must be 1..6\n");
         return;
     }
 
@@ -446,6 +446,10 @@ shell_spawnuser (int slot)
         case 5:
             fn = usig_fn;
             fn_end = usig_fn_end;
+            break;
+        case 6:
+            fn = uread_fn;
+            fn_end = uread_fn_end;
             break;
     }
 
@@ -918,6 +922,9 @@ static const struct shell_cmd shell_commands[] = {
     { "plog <pid>", CMD_SW, "dump a process output log",
       "  print what process <pid> wrote to fd 1/2, captured in its own\n"
       "  per-task ring buffer. lost once the process is reaped.\n" },
+    { "pfeed <pid> <text>", CMD_SW, "inject input into a process",
+      "  push <text> plus a newline into process <pid>'s input buffer;\n"
+      "  the process reads it back via read(fd 0). non-blocking.\n" },
     { "eyeproc", CMD_SW, "full-screen process grid (ESC to quit)",
       "  full-screen live grid of all processes; refreshes continuously.\n"
       "  press ESC to return to the shell.\n" },
@@ -1072,6 +1079,28 @@ shell_execute (const char *cmd)
         else
         {
             task_dump_log (pid);
+        }
+    }
+    else if (shell_starts_with (cmd, "pfeed ") > 0)
+    {
+        const char *p = cmd + 6;
+        shell_skip_spaces (&p);
+        uint32_t pid = 0;
+        if (!shell_parse_uint (&p, &pid))
+        {
+            terminal_writestring ("pfeed: usage: pfeed <pid> <text>\n");
+        }
+        else
+        {
+            shell_skip_spaces (&p);
+            if (*p == '\0')
+            {
+                terminal_writestring ("pfeed: usage: pfeed <pid> <text>\n");
+            }
+            else if (task_feed (pid, p) != 0)
+            {
+                terminal_writestring ("pfeed: no such pid or out of memory\n");
+            }
         }
     }
     else if (strcmp (cmd, "memdump") == 0)

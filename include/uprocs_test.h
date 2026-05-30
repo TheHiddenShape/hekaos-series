@@ -23,4 +23,7 @@ void usig_fn_end (void);
 
 void uhandler (void);
 
+void uread_fn (void);
+void uread_fn_end (void);
+
 #endif

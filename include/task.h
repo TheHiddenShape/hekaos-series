@@ -13,6 +13,8 @@
 
 #define TASK_LOG_SIZE 1024
 
+#define TASK_INPUT_SIZE 256
+
 enum task_state
 {
     TASK_RUNNABLE = 0, /* ready to be scheduled */
@@ -97,6 +99,10 @@ struct task
     char *log_buf;
     uint32_t log_head;
     uint32_t log_len;
+
+    char *in_buf;
+    uint32_t in_head;
+    uint32_t in_tail;
 };
 
 #define MAX_PROC 128
@@ -147,6 +153,9 @@ void task_reap (struct task *zombie);
 
 void task_log_putchar (struct task *t, char c);
 void task_dump_log (uint32_t pid);
+
+uint32_t task_input_read (struct task *t, char *dst, uint32_t count);
+int32_t task_feed (uint32_t pid, const char *s);
 
 /* n-ary tree helpers */
 void task_add_child (struct task *parent, struct task *child);
