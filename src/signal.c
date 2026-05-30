@@ -10,6 +10,7 @@
 /*
  * default kernel actions for each signal.
  * TERM: mark the task as zombie (terminate).
+ * STOP: suspend the task (job control); resumed by SIGCONT.
  * IGN: silently discard.
  */
 static void
@@ -30,10 +31,22 @@ sig_default_action (struct task *t, int signum)
         case SIGPIPE:
         case SIGALRM:
         case SIGTERM:
-        case SIGSTOP:
             /* 128 + signum: shell convention so wait() can tell the task was
              * killed by signum rather than exited cleanly */
             do_exit (t, 128 + signum);
+            break;
+
+        /* stop (job control): suspend rather than terminate. A terminate-class
+         * signal of lower number is dispatched first, so never override a task
+         * that already went ZOMBIE in the same dispatch pass. The scheduler
+         * switches away once the state is no longer RUNNING; SIGCONT (handled
+         * in kernel_signal_send) resumes the task. */
+        case SIGSTOP:
+        case SIGTSTP:
+            if (t->state != TASK_ZOMBIE)
+            {
+                t->state = TASK_STOPPED;
+            }
             break;
 
         /* ignore by default */
@@ -41,7 +54,6 @@ sig_default_action (struct task *t, int signum)
         case SIGUSR2:
         case SIGCHLD:
         case SIGCONT:
-        case SIGTSTP:
         default:
             break;
     }
@@ -72,11 +84,31 @@ kernel_signal_send (struct task *t, int signum)
         return;
     }
 
+    /* job-control interplay (POSIX): SIGCONT discards any pending stop and
+     * resumes a stopped task immediately; a stop signal discards a pending
+     * SIGCONT. The resume must happen here, not in dispatch — a stopped task is
+     * never scheduled, so its dispatch would never run. */
+    if (signum == SIGCONT)
+    {
+        t->pending_signals &= ~SIG_STOP_MASK;
+        if (t->state == TASK_STOPPED)
+        {
+            t->state = TASK_RUNNABLE;
+        }
+    }
+    else if (SIGMASK (signum) & SIG_STOP_MASK)
+    {
+        t->pending_signals &= ~SIGMASK (SIGCONT);
+    }
+
     t->pending_signals |= SIGMASK (signum);
 
-    /* wake a BLOCKED waiter (wait, future sleep) so the scheduler can dispatch
-     */
-    if (t->state == TASK_BLOCKED)
+    /* wake a BLOCKED waiter (wait, future sleep) so the scheduler can dispatch.
+     * Only SIGKILL and SIGCONT act on a stopped task; SIGKILL must rouse it so
+     * the default terminate action can run (other signals stay pending until a
+     * SIGCONT resumes the task). */
+    if (t->state == TASK_BLOCKED
+        || (t->state == TASK_STOPPED && signum == SIGKILL))
     {
         t->state = TASK_RUNNABLE;
     }
@@ -89,6 +121,13 @@ kernel_signal_dispatch (struct task *t)
 
     while (pending)
     {
+        /* a task that just terminated or stopped must not keep draining: the
+         * remaining signals stay pending until it is reaped or resumed */
+        if (t->state == TASK_ZOMBIE || t->state == TASK_STOPPED)
+        {
+            break;
+        }
+
         /* isolate lowest set bit */
         sigset_t bit = pending & (~pending + 1);
         pending &= ~bit;
@@ -373,6 +412,35 @@ signal_test (void)
             kpanic ("signal test: exception-to-signal map wrong");
         }
         pr_info ("signal: exception-to-signal map ok\n");
+    }
+
+    /* 9. job control: SIGSTOP suspends instead of terminating, a non-KILL
+     * signal stays pending while stopped, and SIGCONT resumes the task while
+     * discarding the pending stop */
+    {
+        memset (&t, 0, sizeof (t));
+        kernel_signal_send (&t, SIGSTOP);
+        kernel_signal_dispatch (&t);
+        if (t.state != TASK_STOPPED)
+        {
+            kpanic ("signal test: SIGSTOP did not stop the task");
+        }
+
+        /* SIGTERM sent while stopped must stay pending, not be delivered */
+        kernel_signal_send (&t, SIGTERM);
+        kernel_signal_dispatch (&t);
+        if (t.state != TASK_STOPPED || !(t.pending_signals & SIGMASK (SIGTERM)))
+        {
+            kpanic ("signal test: stopped task drained a pending signal");
+        }
+
+        /* SIGCONT resumes the task and clears the pending stop bit */
+        kernel_signal_send (&t, SIGCONT);
+        if (t.state != TASK_RUNNABLE || (t.pending_signals & SIG_STOP_MASK))
+        {
+            kpanic ("signal test: SIGCONT did not resume / clear stop");
+        }
+        pr_info ("signal: SIGSTOP suspends + SIGCONT resumes ok\n");
     }
 
     pr_info ("signal test passed\n\n");

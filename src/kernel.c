@@ -111,6 +111,8 @@ ep_state_name (enum task_state s)
             return "BLOCKED ";
         case TASK_ZOMBIE:
             return "ZOMBIE  ";
+        case TASK_STOPPED:
+            return "STOPPED ";
         default:
             return "UNKNOWN ";
     }
@@ -129,6 +131,8 @@ ep_state_color (enum task_state s)
             return vga_entry_color (VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
         case TASK_ZOMBIE:
             return vga_entry_color (VGA_COLOR_DARK_GREY, VGA_COLOR_BLACK);
+        case TASK_STOPPED:
+            return vga_entry_color (VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
         default:
             return vga_entry_color (VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     }
@@ -818,6 +822,9 @@ shell_momentum (void)
             break;
         case TASK_ZOMBIE:
             state_str = "ZOMBIE";
+            break;
+        case TASK_STOPPED:
+            state_str = "STOPPED";
             break;
         default:
             state_str = "UNKNOWN";

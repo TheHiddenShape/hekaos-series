@@ -20,7 +20,8 @@ enum task_state
     TASK_RUNNABLE = 0, /* ready to be scheduled */
     TASK_RUNNING,      /* currently executing on the CPU */
     TASK_BLOCKED,      /* waiting on an event (I/O, sleep, lock) */
-    TASK_ZOMBIE, /* terminated, waiting for parent to collect exit status */
+    TASK_ZOMBIE,  /* terminated, waiting for parent to collect exit status */
+    TASK_STOPPED, /* job-control stop (SIGSTOP/SIGTSTP); resumed by SIGCONT */
 };
 
 /*

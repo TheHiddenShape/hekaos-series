@@ -52,6 +52,10 @@ typedef uint32_t sigset_t;
 #define SIGSET_EMPTY ((sigset_t)0u)
 #define SIG_IMMUTABLE_MASK (SIGMASK (SIGKILL) | SIGMASK (SIGSTOP))
 
+/* stop-class signals: their default action suspends the task (job control).
+ * SIGSTOP is also immutable; SIGTSTP defaults to stop but may be caught. */
+#define SIG_STOP_MASK (SIGMASK (SIGSTOP) | SIGMASK (SIGTSTP))
+
 typedef void (*sig_handler_t) (int signo);
 
 #define SIG_DFL ((sig_handler_t)0)    /* default kernel action */

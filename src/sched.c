@@ -134,7 +134,18 @@ schedule (void)
     const char *reason;
     if (current_task->state != TASK_RUNNING)
     {
-        reason = (current_task->state == TASK_ZOMBIE) ? "zombie" : "blocked";
+        switch (current_task->state)
+        {
+            case TASK_ZOMBIE:
+                reason = "zombie";
+                break;
+            case TASK_STOPPED:
+                reason = "stopped";
+                break;
+            default:
+                reason = "blocked";
+                break;
+        }
     }
     else if (--current_task->time_left > 0)
     {
