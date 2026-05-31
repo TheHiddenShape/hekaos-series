@@ -4,10 +4,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* chunk pool zone: 0xD0000000 – 0xEFFFFFFF (512 MiB)
- * kmem_dyn_alloc heap lives below at 0xC0000000 – 0xCFFFFFFF */
+/* chunk pool zone: 0xD0000000 – 0xEEFFFFFF (~480 MiB)
+ * kmem_dyn_alloc heap lives below at 0xC0000000 – 0xCFFFFFFF;
+ * the per-pid kstacks zone sits just above at 0xEF000000 (KSTACK_VA_BASE),
+ * so the pool must stop below it to avoid clobbering kernel stacks. */
 #define KCPOOL_VIRT_BASE 0xD0000000
-#define KCPOOL_VIRT_MAX 0xEFFFFFFF
+#define KCPOOL_VIRT_MAX 0xEEFFFFFF
 
 enum kmem_cache_size
 {
