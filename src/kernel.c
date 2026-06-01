@@ -225,14 +225,28 @@ ep_draw_cell (int gc, int gr, struct task *t)
     /* row 5: stack top */
     {
         char line[EP_INNER_W + 1];
-        line[0] = 'S';
-        line[1] = 't';
-        line[2] = 'k';
+        uint32_t stk;
+        if (t->is_userspace)
+        {
+            line[0] = 'S';
+            line[1] = 't';
+            line[2] = 'k';
+            stk = t->mm.stack_top;
+        }
+        else
+        {
+            line[0] = 'k';
+            line[1] = 'S';
+            line[2] = 't';
+            /* boot idle task (PID 0) has no per-task kstack: show 0 */
+            stk = t->kstack ? (uint32_t)t->kstack + KSTACK_PAGES * PAGE_SIZE
+                            : 0;
+        }
         line[3] = ':';
         line[4] = ' ';
         line[5] = '0';
         line[6] = 'x';
-        ep_fmt_hex8 (line + 7, t->mm.stack_top);
+        ep_fmt_hex8 (line + 7, stk);
         line[15] = '\0';
         ep_puts (x0 + 1, y0 + 5, line, addr, EP_INNER_W);
     }

@@ -279,8 +279,6 @@ exec_fn (uint32_t *addr, uint32_t *function, uint32_t size)
     t->mm.pgdir = paging_proc_init (t->pid);
     t->mm.code_start = (uint32_t)addr;
     t->mm.code_end = (uint32_t)addr + size;
-    /* top of userland VA space; grows downward from KERNEL_VIRT_BASE */
-    t->mm.stack_top = KERNEL_VIRT_BASE - PAGE_SIZE;
     /* kthreads always descend from kthreadd, regardless of who invoked
      * exec_fn; fork() preserves the forker as parent (handled in task_fork) */
     t->parent = &kthreadd_task;
