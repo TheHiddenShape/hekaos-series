@@ -281,8 +281,10 @@ terminal_scroll (void)
     statusbar_draw ();
 }
 
+/* Reset the screen state and repaint a blank view. Keeps the current
+ * statusbar_color so the bar palette stays stable across clears. */
 void
-terminal_initialize (void)
+terminal_clear (void)
 {
     terminal_row = 0;
     terminal_column = 0;
@@ -292,18 +294,33 @@ terminal_initialize (void)
     terminal_color = vga_entry_color (VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     terminal_buffer = (volatile uint16_t *)0xB8000;
 
-    if (rdtsc () & 1)
-        statusbar_color = vga_entry_color (VGA_COLOR_WHITE, VGA_COLOR_RED);
-    else
-        statusbar_color = vga_entry_color (VGA_COLOR_RED, VGA_COLOR_WHITE);
-
     for (size_t y = 0; y < USABLE_ROWS; y++)
+    {
         for (size_t x = 0; x < VGA_X; x++)
+        {
             terminal_buffer[y * VGA_X + x] = vga_entry (' ', terminal_color);
+        }
+    }
 
     vga_set_start (0);
     statusbar_draw ();
     terminal_update_cursor ();
+}
+
+/* One-time boot init: pick the status bar palette once, then clear. */
+void
+terminal_initialize (void)
+{
+    if (rdtsc () & 1)
+    {
+        statusbar_color = vga_entry_color (VGA_COLOR_WHITE, VGA_COLOR_RED);
+    }
+    else
+    {
+        statusbar_color = vga_entry_color (VGA_COLOR_RED, VGA_COLOR_WHITE);
+    }
+
+    terminal_clear ();
 }
 
 void

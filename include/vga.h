@@ -27,6 +27,7 @@ enum vga_color
 uint8_t vga_entry_color (enum vga_color fg, enum vga_color bg);
 
 void terminal_initialize (void);
+void terminal_clear (void);
 void terminal_setcolor (uint8_t color);
 uint8_t terminal_getcolor (void);
 void terminal_putentryat (char c, uint8_t color, size_t x, size_t y);

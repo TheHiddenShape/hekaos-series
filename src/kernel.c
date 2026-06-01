@@ -505,7 +505,7 @@ shell_eyeproc (void)
     int page = 0;
 
     disable_interrupts ();
-    terminal_initialize ();
+    terminal_clear ();
     ep_render (page, procs, nprocs, total_pages);
 
     bool extended = false;
@@ -550,7 +550,7 @@ shell_eyeproc (void)
         }
     }
 
-    terminal_initialize ();
+    terminal_clear ();
     shell_print_prompt ();
     enable_interrupts ();
 }
@@ -1078,7 +1078,7 @@ shell_execute (const char *cmd)
     }
     else if (strcmp (cmd, "clear") == 0)
     {
-        terminal_initialize ();
+        terminal_clear ();
     }
     else if (strcmp (cmd, "momentum") == 0)
     {
