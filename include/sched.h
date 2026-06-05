@@ -3,9 +3,8 @@
 
 #include "task.h"
 
-/* one tick = 1000 / PIT_TICK_HZ ms (currently 10 ms); 50 ticks ≈ 500 ms,
- * deliberately slow so a human can observe scheduling transitions */
-#define PROC_QUANTUM 50
+/* one tick = 1000 / PIT_TICK_HZ ms (currently 10 ms); 10 ticks ≈ 100 ms */
+#define PROC_QUANTUM 10
 
 /* set by schedule() when a context switch is requested; consumed by
  * irq_common_stub on IRQ exit. */
