@@ -13,7 +13,10 @@ This is a series leading to v1.0.0, the first stable release of a fully function
 preview**
 ![alt](https://i.imgur.com/GghDdPP.png)
 
-### MAN — help & manual pages
+preview [eyeproc](#sw)**
+![alt](assets/media/eyeproc_viewer.png)
+
+### MAN
 
 | Command                  | Description                                      |
 |--------------------------|--------------------------------------------------|
@@ -21,7 +24,7 @@ preview**
 | `man <cmd>`              | per-command manual page (basic, in v0.5.0)       |
 | `def <cmd>`              | explain a command in detail                      |
 
-### HW — power, CPU, devices, keyboard
+### HW
 
 | Command                  | Description                                      |
 |--------------------------|--------------------------------------------------|
@@ -31,7 +34,7 @@ preview**
 | `keymap qwerty\|azerty`  | select keyboard layout                           |
 | `traptest`               | trigger INT 0x42 and dump the trap frame         |
 
-### SW — tasks, processes, signals, memory, kernel logs
+### SW
 
 | Command                  | Description                                      |
 |--------------------------|--------------------------------------------------|
