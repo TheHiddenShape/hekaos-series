@@ -13,16 +13,26 @@ This is a series leading to v1.0.0, the first stable release of a fully function
 preview**
 ![alt](https://i.imgur.com/GghDdPP.png)
 
-| Command    | Description                                         |
-|------------|-----------------------------------------------------|
-| `help`     | show available commands                             |
-| `dmesg`    | display the kernel ring buffer                      |
-| `memdump`  | show memory usage (heap/vmalloc stats)              |
-| `reboot`   | reboot the system                                   |
-| `shutdown` | power off the system (ACPI)                         |
-| `halt`     | halt the CPU                                        |
-| `keymap`   | switch keyboard layout (`qwerty` \| `azerty`)       |
-| `eyeproc`  | full-screen process grid monitor (ESC to quit)      |
+| Command                  | Description                                      |
+|--------------------------|--------------------------------------------------|
+| `help`                   | show this help message                           |
+| `man <cmd>`              | per-command manual page (basic, in v0.5.0)       |
+| `def <cmd>`              | explain a command in detail                      |
+| `reboot`                 | reboot the system                                |
+| `shutdown`               | power off the system (ACPI)                      |
+| `halt`                   | halt the CPU                                     |
+| `keymap qwerty\|azerty`  | select keyboard layout                           |
+| `traptest`               | trigger INT 0x42 and dump the trap frame         |
+| `clear`                  | clear the terminal screen                        |
+| `momentum`               | dump current task execution context              |
+| `memdump`                | display memory usage summary                     |
+| `dmesg`                  | display kernel ring buffer                       |
+| `plog <pid>`             | dump a process output log                        |
+| `pfeed <pid> <text>`     | inject input into a process                      |
+| `eyeproc`                | full-screen process grid (ESC to quit)           |
+| `spawntsk -k\|-u [N]`    | run kthread/user test N (or all)                 |
+| `kill <pid> <sig>`       | send signal sig to pid                           |
+| `signal <pid> <sig>`     | install a debug handler on pid for sig           |
 ## Building & Running
 
 ### Build with Docker (recommended)
