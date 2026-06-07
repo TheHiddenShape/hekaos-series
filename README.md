@@ -13,16 +13,28 @@ This is a series leading to v1.0.0, the first stable release of a fully function
 preview**
 ![alt](https://i.imgur.com/GghDdPP.png)
 
+### MAN — help & manual pages
+
 | Command                  | Description                                      |
 |--------------------------|--------------------------------------------------|
 | `help`                   | show this help message                           |
 | `man <cmd>`              | per-command manual page (basic, in v0.5.0)       |
 | `def <cmd>`              | explain a command in detail                      |
+
+### HW — power, CPU, devices, keyboard
+
+| Command                  | Description                                      |
+|--------------------------|--------------------------------------------------|
 | `reboot`                 | reboot the system                                |
 | `shutdown`               | power off the system (ACPI)                      |
 | `halt`                   | halt the CPU                                     |
 | `keymap qwerty\|azerty`  | select keyboard layout                           |
 | `traptest`               | trigger INT 0x42 and dump the trap frame         |
+
+### SW — tasks, processes, signals, memory, kernel logs
+
+| Command                  | Description                                      |
+|--------------------------|--------------------------------------------------|
 | `clear`                  | clear the terminal screen                        |
 | `momentum`               | dump current task execution context              |
 | `memdump`                | display memory usage summary                     |
