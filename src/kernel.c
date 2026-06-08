@@ -689,7 +689,7 @@ shell_print_prompt (void)
         = vga_entry_color (VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     uint8_t saved_color = terminal_getcolor ();
     terminal_setcolor (name_color);
-    terminal_writestring ("hekashell");
+    terminal_writestring ("hekaterm");
     terminal_setcolor (symbol_color);
     terminal_writestring ("> ");
     terminal_setcolor (saved_color);

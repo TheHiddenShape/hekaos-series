@@ -8,7 +8,7 @@ This is a series leading to v1.0.0, the first stable release of a fully function
 
 ## Internals
 
-**hekashell**: interactive command-line interface with the following built-in commands:
+**hekaterm**: interactive command-line interface with the following built-in commands:
 
 preview**
 ![alt](https://i.imgur.com/GghDdPP.png)
