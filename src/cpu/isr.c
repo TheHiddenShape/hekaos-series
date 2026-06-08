@@ -308,6 +308,14 @@ irq_handler (struct trap_frame *frame)
         case 33: /* IRQ 1 = keyboard */
         {
             static bool extended = false;
+
+            /* ignore spurious IRQs with no data ready: reading 0x60 while the
+             * output buffer is empty returns a stale scancode */
+            if (!(inb (0x64) & 1))
+            {
+                break;
+            }
+
             uint8_t scancode = inb (0x60);
 
             if (scancode == 0xE0)
