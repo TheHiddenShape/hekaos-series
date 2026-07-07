@@ -2,6 +2,8 @@ FROM ubuntu:latest
 
 RUN apt-get update && apt-get install -y \
     wget \
+    curl \
+    ca-certificates \
     build-essential \
     xorriso \
     qemu-system-x86 \
@@ -14,7 +16,12 @@ RUN apt-get update && apt-get install -y \
 ENV HOME="/root"
 ENV PREFIX="${HOME}/opt/cross"
 ENV TARGET="i686-elf"
-ENV PATH="${PREFIX}/bin:${PATH}"
+ENV RUSTUP_HOME="${HOME}/.rustup"
+ENV CARGO_HOME="${HOME}/.cargo"
+ENV PATH="${PREFIX}/bin:${CARGO_HOME}/bin:${PATH}"
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal && \
+    rustup target add i686-unknown-linux-gnu
 
 RUN mkdir -p $HOME/src && cd $HOME/src && \
     wget https://ftp.gnu.org/gnu/binutils/binutils-2.44.tar.xz && \

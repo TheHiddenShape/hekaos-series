@@ -35,6 +35,9 @@
 
 void shell_print_prompt (void);
 
+/* defined in src/rust/ffi_demo.rs, linked in statically as a staticlib */
+extern void rust_ffi_demo (void);
+
 /* eyeproc: full-screen process grid monitor
  * 4 cols x 3 rows = 12 cells/page, each cell 20x7 chars
  * rows 0-20: grid, rows 21-23: status area */
@@ -1388,6 +1391,8 @@ kernel_main (void)
     klog_gdt_info ();
 
     pr_info ("hekaOS v0.3.0 initialized\n");
+
+    rust_ffi_demo ();
 
     terminal_writestring ("Welcome to hekaOS, type help to get started !\n\n");
     shell_print_prompt ();

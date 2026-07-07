@@ -8,6 +8,7 @@ DRIVERS_DIR = $(SRC_DIR)/drivers
 KLIB_DIR = $(SRC_DIR)/klib
 MEMORY_DIR = $(SRC_DIR)/memory
 TASK_INS_DIR = $(SRC_DIR)/task_ins
+RUST_DIR = $(SRC_DIR)/rust
 KERNEL_DIR = kernel
 
 LINKER_SCRIPT = $(SRC_DIR)/linker.ld
@@ -24,6 +25,10 @@ TARGET_PATH = $(HOME)/opt/cross/bin/$(TARGET)
 CC = $(TARGET_PATH)-gcc
 AS = $(TARGET_PATH)-as
 LD = $(TARGET_PATH)-ld
+
+RUSTC = rustc
+RUST_TARGET = i686-unknown-linux-gnu
+RUST_LIB = $(OBJ_DIR)/libhekarust.a
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
@@ -70,8 +75,11 @@ $(OBJ_DIR)/%.o: %.s | $(OBJ_DIR)
 $(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(KERNEL_BIN): $(OBJS) $(LINKER_SCRIPT) | $(KERNEL_DIR)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) -lgcc
+$(RUST_LIB): $(RUST_DIR)/ffi_demo.rs | $(OBJ_DIR)
+	$(RUSTC) --edition 2021 --crate-type staticlib --target $(RUST_TARGET) -C panic=abort -O -o $@ $<
+
+$(KERNEL_BIN): $(OBJS) $(RUST_LIB) $(LINKER_SCRIPT) | $(KERNEL_DIR)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(RUST_LIB) -lgcc
 
 $(KERNEL_ISO): $(KERNEL_BIN) $(GRUB_CFG) | $(KERNEL_DIR)
 	mkdir -p $(KERNEL_DIR)/boot/grub
